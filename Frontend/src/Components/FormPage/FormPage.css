@@ -1,0 +1,130 @@
+.form-container {
+  max-width: 600px;
+  min-height: 100px;
+  margin: 30px auto;
+  margin-top: 40px;
+  padding: 18px 10px;
+  background: linear-gradient(135deg, #f9f9f9 0%, #e0f7ff 100%);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
+  border-radius: 15px;
+  text-align: center;
+  transition: all 0.3s ease-in-out;
+}
+
+.form-container:hover {
+  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.3);
+  transform: translateY(-10px);
+}
+
+.form-title {
+  margin-bottom: 12px;
+  font-size: 22px;
+  color: #333;
+  font-weight: bold;
+  letter-spacing: 1px;
+  background: linear-gradient(to right, #66a6ff, #f47c7c);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.form-input {
+  width: 100%;
+  padding: 8px 10px;
+  margin-bottom: 10px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  transition: border 0.3s ease, box-shadow 0.3s ease;
+  font-size: 15px;
+  color: #333;
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: #66a6ff;
+  box-shadow: 0 0 8px rgba(102, 166, 255, 0.6);
+}
+
+.form-button {
+  width: auto;
+  min-width: 110px;
+  padding: 10px 14px;
+  margin: 0 8px 0 0;
+  display: inline-block;
+  background-color: #66a6ff;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: bold;
+  transition: background-color 0.3s ease, transform 0.2s;
+  box-shadow: 0 4px 10px rgba(102, 166, 255, 0.4);
+}
+
+.form-button:hover {
+  background-color: #557acc;
+  transform: scale(1.05);
+}
+
+.form-button.secondary {
+  background-color: #f47c7c;
+  box-shadow: 0 4px 10px rgba(244, 124, 124, 0.4);
+}
+
+.form-button.secondary:hover {
+  background-color: #d66969;
+  transform: scale(1.05);
+}
+
+.form-button.third{
+  background-color: #56984b;
+  box-shadow: 0 4px 10px rgba(244, 124, 124, 0.4);
+}
+
+.form-button.third:hover {
+  background-color: #4f9a40;
+  transform: scale(1.05);
+}
+
+.form-button:active {
+  transform: scale(0.95);
+}
+
+.form-button:last-child {
+  margin-right: 0;
+}
+
+.form-buttons-row {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 600px) {
+  .form-container {
+    padding: 8px 2px;
+    margin: 10px auto;
+    margin-top: 10px;
+  }
+  .form-title {
+    font-size: 18px;
+    margin-bottom: 8px;
+  }
+  .form-input {
+    font-size: 13px;
+    padding: 6px 6px;
+    margin-bottom: 7px;
+  }
+  .form-buttons-row {
+    flex-direction: column;
+    gap: 6px;
+  }
+  .form-button {
+    width: 100%;
+    margin: 0 0 6px 0;
+    min-width: unset;
+  }
+}
