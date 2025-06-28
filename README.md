@@ -1,6 +1,6 @@
 # 📊 Sales Analysis Dashboard
 
-A full-stack MERN (MongoDB, Express, React, Node.js) project for tracking and analyzing sales data with beautiful data visualization using **Chart.js**.
+A full - stack MERN (MongoDB, Express, React, Node.js) project for tracking and analyzing sales data with beautiful data visualization using **Chart.js**.
 
 ![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)
 ![Express.js](https://img.shields.io/badge/Express.js-000000?style=for-the-badge&logo=express&logoColor=white)
