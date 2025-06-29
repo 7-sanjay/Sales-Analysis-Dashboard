@@ -695,7 +695,6 @@ function VisualizationPage() {
             }
           }} />
         </div>
-
         <div className="chart">
           <h4>Profit by Location</h4>
           <Bar data={{
