@@ -25,10 +25,12 @@ ChartJS.register(
   Filler
 );
 
+// Use a reliable GeoJSON source
 const geoUrl = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json";
 
-// Map your product location names to the map's country names
+// Comprehensive country name mapping
 const countryNameMapping = {
+  // Form names to GeoJSON names
   "United States": "United States of America",
   "India": "India",
   "United Kingdom": "United Kingdom",
@@ -38,7 +40,12 @@ const countryNameMapping = {
   "France": "France",
   "Japan": "Japan",
   "Brazil": "Brazil",
-  "South Africa": "South Africa"
+  "South Africa": "South Africa",
+  // Alternative mappings
+  "USA": "United States of America",
+  "UK": "United Kingdom",
+  "US": "United States of America",
+  // Add more variations as needed
 };
 
 function VisualizationPage() {
@@ -47,9 +54,89 @@ function VisualizationPage() {
   const [totalRevenue, setTotalRevenue] = useState(0);
   const [totalUnits, setTotalUnits] = useState(0);
   const [tooltipContent, setTooltipContent] = useState('');
+  const [geoData, setGeoData] = useState(null);
+  const [geoError, setGeoError] = useState(null);
   const navigate = useNavigate();
 
   const colorPalette = [...Array(50).keys()].map(i => `hsl(${i * 30 % 360}, 70%, 60%)`);
+
+  // Fetch GeoJSON data
+  useEffect(() => {
+    const fetchGeoData = async () => {
+      try {
+        console.log('Fetching GeoJSON from:', geoUrl);
+        const response = await fetch(geoUrl);
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json();
+        console.log('GeoJSON data loaded successfully:', data);
+        setGeoData(data);
+        setGeoError(null);
+      } catch (error) {
+        console.error('Error fetching GeoJSON:', error);
+        setGeoError(error.message);
+        // Fallback to a simple world map
+        const fallbackData = {
+          type: "FeatureCollection",
+          features: [
+            {
+              type: "Feature",
+              properties: { name: "United States of America" },
+              geometry: { type: "Polygon", coordinates: [[[-125, 48], [-125, 25], [-66, 25], [-66, 48], [-125, 48]]] }
+            },
+            {
+              type: "Feature", 
+              properties: { name: "India" },
+              geometry: { type: "Polygon", coordinates: [[[68, 37], [68, 8], [97, 8], [97, 37], [68, 37]]] }
+            },
+            {
+              type: "Feature",
+              properties: { name: "United Kingdom" },
+              geometry: { type: "Polygon", coordinates: [[[-8, 60], [-8, 50], [2, 50], [2, 60], [-8, 60]]] }
+            },
+            {
+              type: "Feature",
+              properties: { name: "Canada" },
+              geometry: { type: "Polygon", coordinates: [[[-141, 84], [-141, 42], [-52, 42], [-52, 84], [-141, 84]]] }
+            },
+            {
+              type: "Feature",
+              properties: { name: "Australia" },
+              geometry: { type: "Polygon", coordinates: [[[113, -10], [113, -44], [154, -44], [154, -10], [113, -10]]] }
+            },
+            {
+              type: "Feature",
+              properties: { name: "Germany" },
+              geometry: { type: "Polygon", coordinates: [[[6, 55], [6, 47], [15, 47], [15, 55], [6, 55]]] }
+            },
+            {
+              type: "Feature",
+              properties: { name: "France" },
+              geometry: { type: "Polygon", coordinates: [[[-5, 51], [-5, 41], [10, 41], [10, 51], [-5, 51]]] }
+            },
+            {
+              type: "Feature",
+              properties: { name: "Japan" },
+              geometry: { type: "Polygon", coordinates: [[[129, 46], [129, 30], [146, 30], [146, 46], [129, 46]]] }
+            },
+            {
+              type: "Feature",
+              properties: { name: "Brazil" },
+              geometry: { type: "Polygon", coordinates: [[[-74, 5], [-74, -34], [-34, -34], [-34, 5], [-74, 5]]] }
+            },
+            {
+              type: "Feature",
+              properties: { name: "South Africa" },
+              geometry: { type: "Polygon", coordinates: [[[16, -22], [16, -35], [33, -35], [33, -22], [16, -22]]] }
+            }
+          ]
+        };
+        setGeoData(fallbackData);
+      }
+    };
+    fetchGeoData();
+  }, []);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -389,85 +476,182 @@ function VisualizationPage() {
 
         {/* 5. Geographical Visualizations */}
         <div className="chart map-chart">
-          <h4>Products Sold by Country (Choropleth Map)</h4>
+          <h4>Purchase Quantity by Country (Choropleth Map)</h4>
           <ReactTooltip>{tooltipContent}</ReactTooltip>
-          <ComposableMap 
-            data-tip="" 
-            projectionConfig={{ scale: 150 }}
-            style={{ width: "100%", height: "400px" }}
-          >
-            <Geographies geography={geoUrl}>
-              {({ geographies }) => {
-                // Count products sold per country, using mapping
-                const countryCounts = {};
-                const unmatchedLocations = new Set();
-                productData.forEach(item => {
-                  if (item.location) {
-                    // Map location to map country name if possible
-                    const mapped = countryNameMapping[item.location] || item.location;
-                    countryCounts[mapped] = (countryCounts[mapped] || 0) + 1;
+          {/* Debug info */}
+          <div style={{ marginBottom: "10px", fontSize: "12px", color: "#666" }}>
+            <p>GeoData loaded: {geoData ? 'Yes' : 'No'}</p>
+            <p>Product data count: {productData.length}</p>
+            <p>Locations in data: {[...new Set(productData.map(p => p.location))].join(', ')}</p>
+          </div>
+          {geoData && (
+            <ComposableMap 
+              data-tip="" 
+              projectionConfig={{ scale: 150 }}
+              style={{ width: "100%", height: "400px" }}
+            >
+              <Geographies geography={geoData}>
+                {({ geographies }) => {
+                  console.log('Rendering map with geographies:', geographies.length);
+                  // Count purchase quantity and product count per country, using mapping
+                  const countryQuantities = {};
+                  const countryProductCounts = {};
+                  const unmatchedCountries = new Set();
+                  productData.forEach(item => {
+                    if (item.location) {
+                      const mapped = countryNameMapping[item.location] || item.location;
+                      countryQuantities[mapped] = (countryQuantities[mapped] || 0) + (item.quantity || 0);
+                      if (!countryProductCounts[mapped]) countryProductCounts[mapped] = new Set();
+                      countryProductCounts[mapped].add(item.productName);
+                    }
+                  });
+                  // Debug: Log the mapping process
+                  console.log('Country quantities:', countryQuantities);
+                  console.log('Country product counts:', Object.fromEntries(Object.entries(countryProductCounts).map(([k, v]) => [k, v.size])));
+                  console.log('Available countries in GeoJSON:', geographies.map(geo => geo.properties.name || geo.properties.NAME));
+                  // For debugging: log unmatched countries
+                  geographies.forEach(geo => {
+                    const countryName = geo.properties.name || geo.properties.NAME;
+                    if (!Object.keys(countryQuantities).includes(countryName)) {
+                      unmatchedCountries.add(countryName);
+                    }
+                  });
+                  if (unmatchedCountries.size > 0) {
+                    console.log('Countries in map with no data:', Array.from(unmatchedCountries));
                   }
-                });
-                // For debugging: log unmatched locations
-                geographies.forEach(geo => {
-                  const countryName = geo.properties.NAME;
-                  if (!Object.keys(countryCounts).includes(countryName)) {
-                    unmatchedLocations.add(countryName);
-                  }
-                });
-                if (unmatchedLocations.size > 0) {
-                  console.log('Countries in map with no data:', Array.from(unmatchedLocations));
-                }
-                const counts = Object.values(countryCounts);
-                const maxCount = Math.max(...counts, 1);
-                // Simple blue color scale
-                const colorScale = (value) => {
-                  if (!value) return '#f0f4fa';
-                  const intensity = Math.min(1, value / maxCount);
-                  // Blue gradient: light to dark
-                  return `rgba(34, 139, 230, ${0.3 + intensity * 0.7})`;
-                };
-                return geographies.map(geo => {
-                  const countryName = geo.properties.NAME;
-                  const count = countryCounts[countryName] || 0;
-                  return (
-                    <Geography
-                      key={geo.rsmKey}
-                      geography={geo}
-                      fill={colorScale(count)}
-                      stroke="#ffffff"
-                      strokeWidth={0.5}
-                      onMouseEnter={() => {
-                        setTooltipContent(
-                          `${countryName} — Products Sold: ${count}`
-                        );
-                      }}
-                      onMouseLeave={() => {
-                        setTooltipContent('');
-                      }}
-                      style={{
-                        default: { 
-                          outline: 'none',
-                          transition: 'all 0.3s ease'
-                        },
-                        hover: { 
-                          fill: "#ff6b6b", 
-                          outline: "none",
-                          stroke: "#ffffff",
-                          strokeWidth: 1,
-                          cursor: "pointer"
-                        },
-                        pressed: { 
-                          outline: "none",
-                          fill: "#ff5252"
-                        }
-                      }}
-                    />
-                  );
-                });
-              }}
-            </Geographies>
-          </ComposableMap>
+                  const quantities = Object.values(countryQuantities);
+                  const maxQuantity = Math.max(...quantities, 1);
+                  
+                  // Improved color scale based on quantity with better differentiation
+                  const colorScale = (value) => {
+                    if (!value || value === 0) return '#f0f4fa'; // Light grey for no data
+                    
+                    // Create a more distinct color gradient
+                    const intensity = Math.min(1, value / maxQuantity);
+                    
+                    // Use a red gradient with better differentiation
+                    if (intensity < 0.2) return '#ffebee'; // Very light red
+                    if (intensity < 0.4) return '#ffcdd2'; // Light red
+                    if (intensity < 0.6) return '#ef9a9a'; // Medium red
+                    if (intensity < 0.8) return '#e57373'; // Darker red
+                    return '#f44336'; // Dark red for highest values
+                  };
+
+                  // Debug: Log the color mapping
+                  console.log('Color scale debug:');
+                  Object.entries(countryQuantities).forEach(([country, quantity]) => {
+                    const color = colorScale(quantity);
+                    console.log(`${country}: ${quantity} units -> ${color}`);
+                  });
+
+                  return geographies.map(geo => {
+                    const countryName = geo.properties.name || geo.properties.NAME;
+                    const quantity = countryQuantities[countryName] || 0;
+                    const productCount = countryProductCounts[countryName] ? countryProductCounts[countryName].size : 0;
+                    
+                    return (
+                      <Geography
+                        key={geo.rsmKey}
+                        geography={geo}
+                        fill={colorScale(quantity)}
+                        stroke={quantity > 0 ? "#d32f2f" : "#ffffff"}
+                        strokeWidth={quantity > 0 ? 2 : 0.5}
+                        onMouseEnter={() => {
+                          setTooltipContent(
+                            `${countryName} — Purchase Quantity: ${quantity}<br/>Products Sold: ${productCount}`
+                          );
+                        }}
+                        onMouseLeave={() => {
+                          setTooltipContent('');
+                        }}
+                        style={{
+                          default: { 
+                            outline: 'none',
+                            transition: 'all 0.3s ease'
+                          },
+                          hover: { 
+                            fill: "#ff6b6b", 
+                            outline: "none",
+                            stroke: "#ffffff",
+                            strokeWidth: 3,
+                            cursor: "pointer"
+                          },
+                          pressed: { 
+                            outline: "none",
+                            fill: "#ff5252"
+                          }
+                        }}
+                      />
+                    );
+                  });
+                }}
+              </Geographies>
+            </ComposableMap>
+          )}
+          
+          {/* Color Legend */}
+          {geoData && (
+            <div style={{ 
+              marginTop: "15px", 
+              padding: "10px", 
+              backgroundColor: "#f8f9fa", 
+              borderRadius: "8px",
+              border: "1px solid #e9ecef"
+            }}>
+              <h5 style={{ margin: "0 0 10px 0", fontSize: "14px", color: "#495057" }}>Purchase Quantity Legend</h5>
+              <div style={{ display: "flex", justifyContent: "center", gap: "20px", flexWrap: "wrap" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  <div style={{ width: "20px", height: "20px", backgroundColor: "#f0f4fa", border: "1px solid #dee2e6" }}></div>
+                  <span style={{ fontSize: "12px", color: "#6c757d" }}>No Data</span>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  <div style={{ width: "20px", height: "20px", backgroundColor: "#ffebee", border: "1px solid #dee2e6" }}></div>
+                  <span style={{ fontSize: "12px", color: "#6c757d" }}>Low (0-20%)</span>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  <div style={{ width: "20px", height: "20px", backgroundColor: "#ffcdd2", border: "1px solid #dee2e6" }}></div>
+                  <span style={{ fontSize: "12px", color: "#6c757d" }}>Medium (20-40%)</span>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  <div style={{ width: "20px", height: "20px", backgroundColor: "#ef9a9a", border: "1px solid #dee2e6" }}></div>
+                  <span style={{ fontSize: "12px", color: "#6c757d" }}>High (40-60%)</span>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  <div style={{ width: "20px", height: "20px", backgroundColor: "#e57373", border: "1px solid #dee2e6" }}></div>
+                  <span style={{ fontSize: "12px", color: "#6c757d" }}>Very High (60-80%)</span>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  <div style={{ width: "20px", height: "20px", backgroundColor: "#f44336", border: "1px solid #dee2e6" }}></div>
+                  <span style={{ fontSize: "12px", color: "#6c757d" }}>Highest (80-100%)</span>
+                </div>
+              </div>
+            </div>
+          )}
+          {!geoData && (
+            <div style={{ 
+              height: "400px", 
+              display: "flex", 
+              alignItems: "center", 
+              justifyContent: "center",
+              backgroundColor: "#f8f9fa",
+              borderRadius: "8px"
+            }}>
+              <p>Loading map data...</p>
+            </div>
+          )}
+          {geoError && (
+            <div style={{ 
+              padding: "10px",
+              backgroundColor: "#fff3cd",
+              border: "1px solid #ffeaa7",
+              borderRadius: "4px",
+              marginTop: "10px"
+            }}>
+              <p style={{ margin: 0, color: "#856404" }}>
+                Map loading error: {geoError}. Using fallback data.
+              </p>
+            </div>
+          )}
         </div>
 
         <div className="chart">

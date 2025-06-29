@@ -55,10 +55,11 @@ function FormPage() {
                 [name]: newValue
             };
 
-            if (["price", "netPrice", "quantity"].includes(name)) {
+            // Always recalculate these values when any field changes
+            if (updatedData.price && updatedData.netPrice && updatedData.quantity) {
                 updatedData.profit = updatedData.price - updatedData.netPrice;
                 updatedData.totalSales = updatedData.quantity * updatedData.price;
-                updatedData.totalProfit = updatedData.quantity * updatedData.netPrice;
+                updatedData.totalProfit = updatedData.quantity * updatedData.profit;
             }
 
             return updatedData;
@@ -97,11 +98,23 @@ function FormPage() {
 
     const updateData = async (formData) => {
         try {
-            console.log('Updating product:', formData);
-            const response = await axios.put(`http://localhost:5000/api/products/${formData._id}`, formData);
+            // Ensure all calculated fields are up to date
+            const updatedFormData = {
+                ...formData,
+                profit: formData.price - formData.netPrice,
+                totalSales: formData.quantity * formData.price,
+                totalProfit: formData.quantity * (formData.price - formData.netPrice)
+            };
+            
+            console.log('Updating product with data:', updatedFormData);
+            console.log('Product ID:', updatedFormData._id);
+            console.log('Location being updated to:', updatedFormData.location);
+            
+            const response = await axios.put(`http://localhost:5000/api/products/${updatedFormData._id}`, updatedFormData);
             if (response.status === 200) {
                 const updatedProduct = response.data;
                 console.log('Product updated successfully:', updatedProduct);
+                console.log('Updated location in response:', updatedProduct.location);
                 alert('Product updated successfully!');
             } else {
                 console.error('Failed to update product');

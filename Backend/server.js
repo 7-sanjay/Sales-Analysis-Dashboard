@@ -62,10 +62,18 @@ app.get('/api/products', async (req, res) => {
 
 app.put('/api/products/:id', async (req, res) => {
   try {
+    console.log('Update request received for ID:', req.params.id);
+    console.log('Update data received:', req.body);
+    console.log('Location in update data:', req.body.location);
+    
     const product = await Product.findByIdAndUpdate(req.params.id, req.body, { new: true });
     if (!product) {
+      console.log('Product not found with ID:', req.params.id);
       return res.status(404).json({ message: 'Product not found' });
     }
+    
+    console.log('Product updated successfully:', product);
+    console.log('Updated location in database:', product.location);
     res.json(product);
   } catch (err) {
     console.error('Error updating product:', err);
