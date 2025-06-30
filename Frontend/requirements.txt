@@ -1,3 +1,0 @@
-axios
-firebase
-react-chartjs-2

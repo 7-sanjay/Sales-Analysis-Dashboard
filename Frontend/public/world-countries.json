@@ -100,6 +100,16 @@
         "type": "Polygon",
         "coordinates": [[[16, -22], [16, -35], [33, -35], [33, -22], [16, -22]]]
       }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Russia"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[19, 82], [19, 41], [190, 41], [190, 82], [19, 82]]]
+      }
     }
   ]
 } 

@@ -216,6 +216,7 @@ function FormPage() {
                     <option value="Japan">Japan</option>
                     <option value="Brazil">Brazil</option>
                     <option value="South Africa">South Africa</option>
+                    <option value="Russia">Russia</option>
                 </select>
                 <div className="form-buttons-row">
                     <button type="submit" className="form-button">
