@@ -23,6 +23,8 @@ function FormPage() {
 
     const [isEditing, setIsEditing] = useState(false);
 
+    const API_BASE_URL = process.env.REACT_APP_API_BASE_URL;
+
     const getCurrentTime = () => {
         const now = new Date();
         return now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
@@ -81,7 +83,7 @@ function FormPage() {
     const addData = async (formData) => {
         try {
             console.log('Sending data to backend:', formData);
-            const response = await axios.post('http://localhost:5000/api/products', formData);
+            const response = await axios.post(`${API_BASE_URL}/api/products`, formData);
             if (response.status === 201) {
                 const newProduct = response.data;
                 console.log('Product added successfully:', newProduct);
@@ -110,7 +112,7 @@ function FormPage() {
             console.log('Product ID:', updatedFormData._id);
             console.log('Location being updated to:', updatedFormData.location);
             
-            const response = await axios.put(`http://localhost:5000/api/products/${updatedFormData._id}`, updatedFormData);
+            const response = await axios.put(`${API_BASE_URL}/api/products/${updatedFormData._id}`, updatedFormData);
             if (response.status === 200) {
                 const updatedProduct = response.data;
                 console.log('Product updated successfully:', updatedProduct);

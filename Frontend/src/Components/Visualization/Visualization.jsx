@@ -49,6 +49,8 @@ const countryNameMapping = {
   // Add more variations as needed
 };
 
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL;
+
 function VisualizationPage() {
   const [productData, setProductData] = useState([]);
   const [totalProfit, setTotalProfit] = useState(0);
@@ -172,7 +174,7 @@ function VisualizationPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const response = await axios.get('http://localhost:5000/api/products');
+        const response = await axios.get(`${API_BASE_URL}/api/products`);
         console.log('Raw API response:', response.data);
         setProductData(response.data);
         const profit = response.data.reduce((acc, item) => acc + (item.profit || 0), 0);
