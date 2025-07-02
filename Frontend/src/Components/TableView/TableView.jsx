@@ -74,7 +74,7 @@ function TableView() {
           {data.map((item, index) => (
             <tr key={index}>
               <td>{item.productName}</td>
-              <td>{item.time}</td>
+              <td>{(() => { const d = new Date(item.time); return isNaN(d) ? 'N/A' : d.toLocaleString(undefined, { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }); })()}</td>
               <td>{item.price}</td>
               <td>{item.quantity}</td>
               <td>{item.netPrice}</td>

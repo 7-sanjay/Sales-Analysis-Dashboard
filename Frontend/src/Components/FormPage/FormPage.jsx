@@ -26,8 +26,7 @@ function FormPage() {
     const API_BASE_URL = process.env.REACT_APP_API_BASE_URL;
 
     const getCurrentTime = () => {
-        const now = new Date();
-        return now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+        return new Date().toISOString();
     };
 
     useEffect(() => {
@@ -129,117 +128,115 @@ function FormPage() {
     };
 
     return (
-        <div className="form-container">
-            <h2 className="form-title">{isEditing ? "Edit Product Data" : "Add Product Data"}</h2>
-            <form onSubmit={handleSubmit}>
-                <input
-                    className="form-input"
-                    name="productName"
-                    placeholder="Product Name"
-                    onChange={handleChange}
-                    value={formData.productName}
-                    required
-                />
-                <input
-                    className="form-input"
-                    name="time"
-                    value={formData.time}
-                    placeholder="Time"
-                    disabled
-                />
-                <input
-                    className="form-input"
-                    name="price"
-                    placeholder="Price"
-                    onChange={handleChange}
-                    value={formData.price}
-                    required
-                />
-                <input
-                    className="form-input"
-                    name="quantity"
-                    placeholder="Quantity"
-                    onChange={handleChange}
-                    value={formData.quantity}
-                    required
-                />
-                <input
-                    className="form-input"
-                    name="netPrice"
-                    placeholder="Net Price"
-                    onChange={handleChange}
-                    value={formData.netPrice}
-                    required
-                />
-                <input
-                    className="form-input"
-                    name="profit"
-                    value={formData.profit}
-                    placeholder="Profit"
-                    disabled
-                />
-                <input
-                    className="form-input"
-                    name="totalSales"
-                    value={formData.totalSales}
-                    placeholder="Total Sales"
-                    disabled
-                />
-                <input
-                    className="form-input"
-                    name="totalProfit"
-                    value={formData.totalProfit}
-                    placeholder="Total Profit"
-                    disabled
-                />
-                <input
-                    className="form-input"
-                    name="category"
-                    placeholder="Category"
-                    onChange={handleChange}
-                    value={formData.category}
-                    required
-                />
-                <select
-                    className="form-input"
-                    name="location"
-                    value={formData.location}
-                    onChange={handleChange}
-                    required
-                >
-                    <option value="">Select Country</option>
-                    <option value="United States">United States</option>
-                    <option value="India">India</option>
-                    <option value="United Kingdom">United Kingdom</option>
-                    <option value="Canada">Canada</option>
-                    <option value="Australia">Australia</option>
-                    <option value="Germany">Germany</option>
-                    <option value="France">France</option>
-                    <option value="Japan">Japan</option>
-                    <option value="Brazil">Brazil</option>
-                    <option value="South Africa">South Africa</option>
-                    <option value="Russia">Russia</option>
-                </select>
-                <div className="form-buttons-row">
-                    <button type="submit" className="form-button">
-                        {isEditing ? "Update" : "Submit"}
-                    </button>
-                    <button
-                        type="button"
-                        className="form-button secondary"
-                        onClick={() => navigate('/visualization')}
+        <div className="form-outer-wrapper">
+            <div className="form-container">
+                <h2 className="form-title">{isEditing ? "Edit Product Data" : "Add Product Data"}</h2>
+                <form onSubmit={handleSubmit}>
+                    <input
+                        className="form-input"
+                        name="productName"
+                        placeholder="Product Name"
+                        onChange={handleChange}
+                        value={formData.productName}
+                        required
+                    />
+                    <div className="form-input" style={{ textAlign: 'left', color: '#555', background: '#f5f7fa', fontWeight: 500, marginBottom: '0.5rem', border: '1px solid #eee', borderRadius: '8px' }}>
+                        Date & Time: {formData.time ? new Date(formData.time).toLocaleString(undefined, { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : ''}
+                    </div>
+                    <input
+                        className="form-input"
+                        name="price"
+                        placeholder="Price"
+                        onChange={handleChange}
+                        value={formData.price}
+                        required
+                    />
+                    <input
+                        className="form-input"
+                        name="quantity"
+                        placeholder="Quantity"
+                        onChange={handleChange}
+                        value={formData.quantity}
+                        required
+                    />
+                    <input
+                        className="form-input"
+                        name="netPrice"
+                        placeholder="Net Price"
+                        onChange={handleChange}
+                        value={formData.netPrice}
+                        required
+                    />
+                    <input
+                        className="form-input"
+                        name="profit"
+                        value={formData.profit}
+                        placeholder="Profit"
+                        disabled
+                    />
+                    <input
+                        className="form-input"
+                        name="totalSales"
+                        value={formData.totalSales}
+                        placeholder="Total Sales"
+                        disabled
+                    />
+                    <input
+                        className="form-input"
+                        name="totalProfit"
+                        value={formData.totalProfit}
+                        placeholder="Total Profit"
+                        disabled
+                    />
+                    <input
+                        className="form-input"
+                        name="category"
+                        placeholder="Category"
+                        onChange={handleChange}
+                        value={formData.category}
+                        required
+                    />
+                    <select
+                        className="form-input"
+                        name="location"
+                        value={formData.location}
+                        onChange={handleChange}
+                        required
                     >
-                        See Visualization
-                    </button>
-                    <button
-                        type="button"
-                        className="form-button third"
-                        onClick={() => navigate('/table-view')}
-                    >
-                        View as Table
-                    </button>
-                </div>
-            </form>
+                        <option value="">Select Country</option>
+                        <option value="United States">United States</option>
+                        <option value="India">India</option>
+                        <option value="United Kingdom">United Kingdom</option>
+                        <option value="Canada">Canada</option>
+                        <option value="Australia">Australia</option>
+                        <option value="Germany">Germany</option>
+                        <option value="France">France</option>
+                        <option value="Japan">Japan</option>
+                        <option value="Brazil">Brazil</option>
+                        <option value="South Africa">South Africa</option>
+                        <option value="Russia">Russia</option>
+                    </select>
+                    <div className="form-buttons-row">
+                        <button type="submit" className="form-button">
+                            {isEditing ? "Update" : "Submit"}
+                        </button>
+                        <button
+                            type="button"
+                            className="form-button secondary"
+                            onClick={() => navigate('/visualization', { state: { section: 'home' } })}
+                        >
+                            See Visualization
+                        </button>
+                        <button
+                            type="button"
+                            className="form-button third"
+                            onClick={() => navigate('/table-view')}
+                        >
+                            View as Table
+                        </button>
+                    </div>
+                </form>
+            </div>
         </div>
     );
 }

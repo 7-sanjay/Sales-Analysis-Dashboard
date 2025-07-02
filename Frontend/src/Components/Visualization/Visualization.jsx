@@ -5,7 +5,7 @@ import {
   Title, Tooltip, Legend, ArcElement, RadialLinearScale, TimeScale, Filler
 } from 'chart.js';
 import axios from 'axios';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { ComposableMap, Geographies, Geography } from 'react-simple-maps';
 import { Tooltip as ReactTooltip } from 'react-tooltip';
 import { Sparklines, SparklinesLine } from 'react-sparklines';
@@ -63,6 +63,7 @@ function VisualizationPage() {
   const [navVisible, setNavVisible] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
+  const location = useLocation();
 
   // Modern color palette with better contrast
   const modernColorPalette = [
@@ -222,6 +223,12 @@ function VisualizationPage() {
     };
     fetchData();
   }, []);
+
+  useEffect(() => {
+    if (location.state && location.state.section) {
+      setActiveSection(location.state.section);
+    }
+  }, [location.state]);
 
   const dataBy = (key, valueKey) => {
     const uniqueKeys = [...new Set(productData.map(item => item[key]).filter(Boolean))];
@@ -384,6 +391,48 @@ function VisualizationPage() {
     if (peakHour !== null) peakSalesHour = `${peakHour}:00 - ${parseInt(peakHour, 10) + 1}:00`;
   }
 
+  // --- KPI Calculations ---
+  const now = new Date();
+  const threeHoursAgo = new Date(now.getTime() - 3 * 60 * 60 * 1000);
+  const sixHoursAgo = new Date(now.getTime() - 6 * 60 * 60 * 1000);
+
+  // Helper to filter by time (assumes p.time is ISO string or Date)
+  function isInRange(item, from, to) {
+    if (!item.time) return false;
+    const t = typeof item.time === 'string' ? new Date(item.time) : item.time;
+    return t >= from && t < to;
+  }
+
+  // Calculate sums for last 3 hours and previous 3 hours
+  function sumByTimeWindow(key) {
+    const last3 = productData.filter(p => isInRange(p, threeHoursAgo, now)).reduce((acc, p) => acc + (p[key] || 0), 0);
+    const prev3 = productData.filter(p => isInRange(p, sixHoursAgo, threeHoursAgo)).reduce((acc, p) => acc + (p[key] || 0), 0);
+    return { last3, prev3 };
+  }
+
+  function percentChange(last, prev) {
+    if (prev === 0) return last === 0 ? 0 : 100;
+    return ((last - prev) / Math.abs(prev)) * 100;
+  }
+
+  const revenueWindow = sumByTimeWindow('totalSales');
+  const profitWindow = sumByTimeWindow('profit');
+  const unitsWindow = sumByTimeWindow('quantity');
+
+  const revenueChange = percentChange(revenueWindow.last3, revenueWindow.prev3);
+  const profitChange = percentChange(profitWindow.last3, profitWindow.prev3);
+  const unitsChange = percentChange(unitsWindow.last3, unitsWindow.prev3);
+
+  function renderChange(val, small) {
+    if (val === 0) return <span style={{ color: '#888', fontSize: small ? '0.95rem' : undefined, fontWeight: 500 }}>&#8596; 0%</span>;
+    const up = val > 0;
+    return (
+      <span style={{ color: up ? '#43e97b' : '#f5576c', fontWeight: 600, fontSize: small ? '0.95rem' : undefined }}>
+        {up ? '▲' : '▼'} {Math.abs(val).toFixed(1)}%
+      </span>
+    );
+  }
+
   // Loading component
   const LoadingSkeleton = () => (
     <div className="chart loading-skeleton" style={{ height: '400px' }}>
@@ -396,9 +445,14 @@ function VisualizationPage() {
       <div className="visualization-container">
         <div className="dashboard-header">
           <h2 className="dashboard-title-gradient">Sales Analysis Dashboard</h2>
-          <button className="go-home-button" onClick={() => navigate('/form')}>
-            Go to Home
-          </button>
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <button className="go-home-button" onClick={() => navigate('/Table-view')}>
+              Table View
+            </button>
+            <button className="go-home-button" onClick={() => navigate('/form')}>
+              Go to Home
+            </button>
+          </div>
         </div>
         
         <div className="kpi-cards">
@@ -437,15 +491,33 @@ function VisualizationPage() {
           </button>
           <h2 className="dashboard-title-gradient">Sales Analysis Dashboard</h2>
         </div>
-        <button className="go-home-button" onClick={() => navigate('/form')}>
-          Go to Home
-        </button>
+        <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <button className="go-home-button" onClick={() => navigate('/Table-view')}>
+            Table View
+          </button>
+          <button className="go-home-button" onClick={() => navigate('/form')}>
+            Go to Home
+          </button>
+        </div>
       </div>
       
       <div className="dashboard-layout">
         {/* Left Navigation Pane */}
         <div className={`navigation-pane ${navVisible ? 'visible' : 'hidden'}`}>
           <h3>📋 Navigation Menu</h3>
+          <div className="nav-section">
+            <div 
+              className={`nav-section-header ${activeSection === 'home' ? 'active' : ''}`}
+              onClick={() => setActiveSection('home')}
+              role="button"
+              tabIndex={0}
+              onKeyPress={(e) => e.key === 'Enter' && setActiveSection('home')}
+              style={{ transition: 'all 0.3s' }}
+            >
+              <span role="img" aria-label="home" style={{ marginRight: '0.5rem', transition: 'transform 0.3s', display: 'inline-block', transform: activeSection === 'home' ? 'scale(1.2)' : 'scale(1)' }}>🏠</span>
+              Home
+            </div>
+          </div>
           {navigationSections.map((section) => (
             <div key={section.id} className="nav-section">
               <div 
@@ -463,82 +535,96 @@ function VisualizationPage() {
 
         {/* Main Content Area */}
         <div className={`main-content ${navVisible ? 'with-nav' : 'full-width'}`}>
-          {/* KPI Cards - Always visible */}
-          <div className="kpi-cards">
-            <div className="kpi-card">
-              <h3>💰 Total Revenue</h3>
-              <p>₹{totalRevenue.toLocaleString('en-IN')}</p>
-              <Sparklines data={productData.map(p => p.totalSales || 0)} height={30} margin={5}>
-                <SparklinesLine color="#667eea" style={{ fill: "none", strokeWidth: 3 }} />
-              </Sparklines>
-            </div>
-            <div className="kpi-card">
-              <h3>📈 Total Profit</h3>
-              <p>₹{totalProfit.toLocaleString('en-IN')}</p>
-              <Sparklines data={productData.map(p => p.profit || 0)} height={30} margin={5}>
-                <SparklinesLine color="#f093fb" style={{ fill: "none", strokeWidth: 3 }} />
-              </Sparklines>
-            </div>
-            <div className="kpi-card">
-              <h3>📦 Total Units Sold</h3>
-              <p>{totalUnits.toLocaleString('en-IN')}</p>
-              <Sparklines data={productData.map(p => p.quantity || 0)} height={30} margin={5}>
-                <SparklinesLine color="#4facfe" style={{ fill: "none", strokeWidth: 3 }} />
-              </Sparklines>
-            </div>
-            <div className="kpi-card">
-              <h3>🏆 Best Selling Product</h3>
-              <p>{bestSellingProduct.productName || 'N/A'}</p>
-            </div>
-            <div className="kpi-card">
-              <h3>💎 Most Profitable Category</h3>
-              <p>{topCategory || 'N/A'}</p>
-            </div>
-            <div className="kpi-card">
-              <h3>🛒 Most Purchased Category</h3>
-              <p>{mostPurchasedCategory || 'N/A'}</p>
-              <Sparklines data={productData.filter(p => p.category === mostPurchasedCategory).map(p => p.quantity || 0)} height={30} margin={5}>
-                <SparklinesLine color="#43e97b" style={{ fill: "none", strokeWidth: 3 }} />
-              </Sparklines>
-            </div>
-            <div className="kpi-card">
-              <h3>🌍 Top Purchasing Country</h3>
-              <p>{mostPurchasedCountry || 'N/A'}</p>
-              <Sparklines data={productData.filter(p => p.location === mostPurchasedCountry).map(p => p.quantity || 0)} height={30} margin={5}>
-                <SparklinesLine color="#fa709a" style={{ fill: "none", strokeWidth: 3 }} />
-              </Sparklines>
-            </div>
-            <div className="kpi-card">
-              <h3>⏰ Peak Sales Hours</h3>
-              <p>{peakSalesHour}</p>
-              <Sparklines data={(() => {
-                // Build array of sales by hour (0-23)
-                const hourSalesArr = Array(24).fill(0);
-                productData.forEach(item => {
-                  if (item.time) {
-                    let hour = null;
-                    if (typeof item.time === 'string') {
-                      const date = new Date(item.time);
-                      if (!isNaN(date)) {
-                        hour = date.getHours();
-                      } else {
-                        const match = item.time.match(/(\d{1,2}):/);
-                        if (match) hour = parseInt(match[1], 10);
+          {/* KPI Cards - Only show in Home section */}
+          {activeSection === 'home' && (
+            <div className="kpi-cards">
+              <div className="kpi-card">
+                <h3>💰 Total Revenue</h3>
+                <p>₹{totalRevenue.toLocaleString('en-IN')}</p>
+                <Sparklines data={productData.map(p => p.totalSales || 0)} height={30} margin={5}>
+                  <SparklinesLine color="#667eea" style={{ fill: "none", strokeWidth: 3 }} />
+                </Sparklines>
+                <div className="kpi-change-row">
+                  <span className="kpi-change-value">{renderChange(revenueChange, true)}</span>
+                  <span className="kpi-change-label">Since last 3 hours</span>
+                </div>
+              </div>
+              <div className="kpi-card">
+                <h3>📈 Total Profit</h3>
+                <p>₹{totalProfit.toLocaleString('en-IN')}</p>
+                <Sparklines data={productData.map(p => p.profit || 0)} height={30} margin={5}>
+                  <SparklinesLine color="#f093fb" style={{ fill: "none", strokeWidth: 3 }} />
+                </Sparklines>
+                <div className="kpi-change-row">
+                  <span className="kpi-change-value">{renderChange(profitChange, true)}</span>
+                  <span className="kpi-change-label">Since last 3 hours</span>
+                </div>
+              </div>
+              <div className="kpi-card">
+                <h3>📦 Total Units Sold</h3>
+                <p>{totalUnits.toLocaleString('en-IN')}</p>
+                <Sparklines data={productData.map(p => p.quantity || 0)} height={30} margin={5}>
+                  <SparklinesLine color="#4facfe" style={{ fill: "none", strokeWidth: 3 }} />
+                </Sparklines>
+                <div className="kpi-change-row">
+                  <span className="kpi-change-value">{renderChange(unitsChange, true)}</span>
+                  <span className="kpi-change-label">Since last 3 hours</span>
+                </div>
+              </div>
+              <div className="kpi-card">
+                <h3>🏆 Best Selling Product</h3>
+                <p>{bestSellingProduct.productName || 'N/A'}</p>
+              </div>
+              <div className="kpi-card">
+                <h3>💎 Most Profitable Category</h3>
+                <p>{topCategory || 'N/A'}</p>
+              </div>
+              <div className="kpi-card">
+                <h3>🛒 Most Purchased Category</h3>
+                <p>{mostPurchasedCategory || 'N/A'}</p>
+                <Sparklines data={productData.filter(p => p.category === mostPurchasedCategory).map(p => p.quantity || 0)} height={30} margin={5}>
+                  <SparklinesLine color="#43e97b" style={{ fill: "none", strokeWidth: 3 }} />
+                </Sparklines>
+              </div>
+              <div className="kpi-card">
+                <h3>🌍 Top Purchasing Country</h3>
+                <p>{mostPurchasedCountry || 'N/A'}</p>
+                <Sparklines data={productData.filter(p => p.location === mostPurchasedCountry).map(p => p.quantity || 0)} height={30} margin={5}>
+                  <SparklinesLine color="#fa709a" style={{ fill: "none", strokeWidth: 3 }} />
+                </Sparklines>
+              </div>
+              <div className="kpi-card">
+                <h3>⏰ Peak Sales Hours</h3>
+                <p>{peakSalesHour}</p>
+                <Sparklines data={(() => {
+                  // Build array of sales by hour (0-23)
+                  const hourSalesArr = Array(24).fill(0);
+                  productData.forEach(item => {
+                    if (item.time) {
+                      let hour = null;
+                      if (typeof item.time === 'string') {
+                        const date = new Date(item.time);
+                        if (!isNaN(date)) {
+                          hour = date.getHours();
+                        } else {
+                          const match = item.time.match(/(\d{1,2}):/);
+                          if (match) hour = parseInt(match[1], 10);
+                        }
+                      } else if (item.time instanceof Date) {
+                        hour = item.time.getHours();
                       }
-                    } else if (item.time instanceof Date) {
-                      hour = item.time.getHours();
+                      if (hour !== null && !isNaN(hour)) {
+                        hourSalesArr[hour] += (item.totalSales || 0);
+                      }
                     }
-                    if (hour !== null && !isNaN(hour)) {
-                      hourSalesArr[hour] += (item.totalSales || 0);
-                    }
-                  }
-                });
-                return hourSalesArr;
-              })()} height={30} margin={5}>
-                <SparklinesLine color="#a8edea" style={{ fill: "none", strokeWidth: 3 }} />
-              </Sparklines>
+                  });
+                  return hourSalesArr;
+                })()} height={30} margin={5}>
+                  <SparklinesLine color="#a8edea" style={{ fill: "none", strokeWidth: 3 }} />
+                </Sparklines>
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Chart Sections */}
           <div className="chart-sections">
@@ -717,7 +803,7 @@ function VisualizationPage() {
                   <div className="chart">
                     <h4>📈 Total Revenue Over Time</h4>
                     <Line data={{
-                      labels: productData.map(p => p.time || 'Unknown'),
+                      labels: productData.map(p => p.time ? new Date(p.time).toLocaleString(undefined, { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : 'Unknown'),
                       datasets: [{
                         label: 'Revenue ₹',
                         data: safeChartData(productData.map(p => p.totalSales)),
@@ -813,13 +899,31 @@ function VisualizationPage() {
                         borderRadius: 8,
                         borderSkipped: false
                       }]
-                    }} options={chartOptions} />
+                    }} options={{
+                      ...chartOptions,
+                      plugins: {
+                        ...chartOptions.plugins,
+                        legend: {
+                          display: false
+                        },
+                        tooltip: {
+                          ...chartOptions.plugins.tooltip,
+                          callbacks: {
+                            ...chartOptions.plugins.tooltip.callbacks,
+                            label: function(context) {
+                              const value = context.parsed.x || context.parsed.y || 0;
+                              return `Profit Margin: ${value.toLocaleString('en-IN', { maximumFractionDigits: 2 })}%`;
+                            }
+                          }
+                        }
+                      }
+                    }} />
                   </div>
 
                   <div className="chart">
                     <h4>📈 Total Profit Over Time</h4>
                     <Line data={{
-                      labels: productData.map(p => p.time || 'Unknown'),
+                      labels: productData.map(p => p.time ? new Date(p.time).toLocaleString(undefined, { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : 'Unknown'),
                       datasets: [{
                         label: 'Profit ₹',
                         data: safeChartData(productData.map(p => p.profit)),
@@ -857,6 +961,16 @@ function VisualizationPage() {
                         ...chartOptions.plugins,
                         legend: {
                           display: false
+                        },
+                        tooltip: {
+                          ...chartOptions.plugins.tooltip,
+                          callbacks: {
+                            ...chartOptions.plugins.tooltip.callbacks,
+                            label: function(context) {
+                              const value = context.parsed.x || context.parsed.y || 0;
+                              return `Profit: ₹${value.toLocaleString('en-IN')}`;
+                            }
+                          }
                         }
                       }
                     }} />
@@ -928,6 +1042,16 @@ function VisualizationPage() {
                         ...chartOptions.plugins,
                         legend: {
                           display: false
+                        },
+                        tooltip: {
+                          ...chartOptions.plugins.tooltip,
+                          callbacks: {
+                            ...chartOptions.plugins.tooltip.callbacks,
+                            label: function(context) {
+                              const value = context.parsed.x || context.parsed.y || 0;
+                              return `Quantity: ${value.toLocaleString('en-IN')}`;
+                            }
+                          }
                         }
                       }
                     }} />
@@ -962,7 +1086,27 @@ function VisualizationPage() {
                         borderRadius: 8,
                         borderSkipped: false
                       }]
-                    }} options={chartOptions} />
+                    }} options={
+                      {
+                        ...chartOptions,
+                        plugins: {
+                          ...chartOptions.plugins,
+                          legend: {
+                            display: false
+                          },
+                          tooltip: {
+                            ...chartOptions.plugins.tooltip,
+                            callbacks: {
+                              ...chartOptions.plugins.tooltip.callbacks,
+                              label: function(context) {
+                                const value = context.parsed.x || context.parsed.y || 0;
+                                return `Quantity Sold: ${value.toLocaleString('en-IN')}`;
+                              }
+                            }
+                          }
+                        }
+                      }
+                    } />
                   </div>
                 </div>
               </div>
@@ -976,7 +1120,7 @@ function VisualizationPage() {
                   <div className="chart">
                     <h4>📈 Daily Sales Trend</h4>
                     <Line data={{
-                      labels: productData.map(p => p.time || 'Unknown'),
+                      labels: productData.map(p => p.time ? new Date(p.time).toLocaleString(undefined, { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : 'Unknown'),
                       datasets: [{
                         label: 'Sales ₹',
                         data: safeChartData(productData.map(p => p.totalSales)),
@@ -997,7 +1141,7 @@ function VisualizationPage() {
                   <div className="chart">
                     <h4>🎯 Time vs Category Sales</h4>
                     <Line data={{
-                      labels: productData.map(p => p.time || 'Unknown'),
+                      labels: productData.map(p => p.time ? new Date(p.time).toLocaleString(undefined, { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : 'Unknown'),
                       datasets: dataBy('category', 'totalSales').keys.map((category, index) => ({
                         label: category,
                         data: safeChartData(productData.filter(p => p.category === category).map(p => p.totalSales)),
@@ -1368,6 +1512,18 @@ function VisualizationPage() {
                         legend: {
                           ...chartOptions.plugins.legend,
                           position: 'right'
+                        },
+                        tooltip: {
+                          ...chartOptions.plugins.tooltip,
+                          callbacks: {
+                            ...chartOptions.plugins.tooltip.callbacks,
+                            label: function(context) {
+                              // For Pie/Doughnut, use context.parsed or context.raw
+                              const label = context.label || '';
+                              const value = context.parsed !== undefined ? context.parsed : (context.raw !== undefined ? context.raw : 0);
+                              return `${label}: ₹${value.toLocaleString('en-IN')}`;
+                            }
+                          }
                         }
                       }
                     }} />
