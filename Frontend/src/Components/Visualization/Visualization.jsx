@@ -397,7 +397,7 @@ function VisualizationPage() {
         <div className="dashboard-header">
           <h2 className="dashboard-title-gradient">Sales Analysis Dashboard</h2>
           <button className="go-home-button" onClick={() => navigate('/form')}>
-            🏠 Go to Home
+            Go to Home
           </button>
         </div>
         
@@ -421,27 +421,28 @@ function VisualizationPage() {
   return (
     <div className="visualization-container">
       <div className="dashboard-header">
-        <h2 className="dashboard-title-gradient">📊 Sales Analysis Dashboard</h2>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <button 
+            className={`nav-toggle-button${navVisible ? ' open' : ''}`}
+            onClick={() => setNavVisible(!navVisible)}
+            aria-label="Toggle navigation"
+            title="Toggle Navigation Menu"
+            style={{ position: 'static', background: 'var(--primary-gradient)' }}
+          >
+            <div className={`hamburger-icon${navVisible ? ' open' : ''}`}>
+              <span></span>
+              <span></span>
+              <span></span>
+            </div>
+          </button>
+          <h2 className="dashboard-title-gradient">Sales Analysis Dashboard</h2>
+        </div>
         <button className="go-home-button" onClick={() => navigate('/form')}>
-          🏠 Go to Home
+          Go to Home
         </button>
       </div>
       
       <div className="dashboard-layout">
-        {/* Navigation Toggle Button */}
-        <button 
-          className="nav-toggle-button"
-          onClick={() => setNavVisible(!navVisible)}
-          aria-label="Toggle navigation"
-          title="Toggle Navigation Menu"
-        >
-          <div className="hamburger-icon">
-            <span></span>
-            <span></span>
-            <span></span>
-          </div>
-        </button>
-
         {/* Left Navigation Pane */}
         <div className={`navigation-pane ${navVisible ? 'visible' : 'hidden'}`}>
           <h3>📋 Navigation Menu</h3>
