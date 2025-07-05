@@ -48,7 +48,7 @@ function TableView() {
           View Visualizations
         </button>
         <button className="btn btn-home" onClick={() => navigate('/form')}>
-          Home
+          Add Product
         </button>
         <button className="btn btn-danger" onClick={deleteAllData}>
           Delete All

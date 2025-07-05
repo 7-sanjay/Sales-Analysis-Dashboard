@@ -9,6 +9,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { ComposableMap, Geographies, Geography } from 'react-simple-maps';
 import { Tooltip as ReactTooltip } from 'react-tooltip';
 import { Sparklines, SparklinesLine } from 'react-sparklines';
+import { generateChartInsight, getFallbackInsight } from '../../services/openaiService';
 import './Visualization.css';
 
 ChartJS.register(
@@ -51,6 +52,41 @@ const countryNameMapping = {
 
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL;
 
+// Add a helper for the AI button
+const AIButton = ({ onClick, isLoading, isActive }) => (
+  <button
+    className={`ai-insight-btn${isActive ? ' active' : ''}`}
+    onClick={onClick}
+    style={{
+      position: 'absolute',
+      top: 12,
+      right: 12,
+      zIndex: 10,
+      background: isActive ? '#667eea' : '#fff',
+      color: isActive ? '#fff' : '#667eea',
+      border: '2px solid #667eea',
+      borderRadius: '50%',
+      width: 36,
+      height: 36,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      fontSize: 20,
+      cursor: 'pointer',
+      boxShadow: isActive ? '0 2px 8px rgba(102,126,234,0.15)' : 'none',
+      transition: 'all 0.2s',
+    }}
+    title="Show AI Insight"
+    disabled={isLoading}
+  >
+    {isLoading ? (
+      <span className="loading-spinner" style={{ width: 18, height: 18, borderWidth: 2 }} />
+    ) : (
+      <span role="img" aria-label="AI">🤖</span>
+    )}
+  </button>
+);
+
 function VisualizationPage() {
   const [productData, setProductData] = useState([]);
   const [totalProfit, setTotalProfit] = useState(0);
@@ -62,6 +98,10 @@ function VisualizationPage() {
   const [activeSection, setActiveSection] = useState('kpis');
   const [navVisible, setNavVisible] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
+  const [chartInsights, setChartInsights] = useState({});
+  const [hoveredChart, setHoveredChart] = useState(null);
+  const [insightLoading, setInsightLoading] = useState(false);
+  const [activeInsight, setActiveInsight] = useState(null);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -122,63 +162,7 @@ function VisualizationPage() {
       } catch (error) {
         console.error('Error fetching GeoJSON:', error);
         setGeoError(error.message);
-        // Fallback to a simple world map
-        const fallbackData = {
-          type: "FeatureCollection",
-          features: [
-            {
-              type: "Feature",
-              properties: { name: "United States of America" },
-              geometry: { type: "Polygon", coordinates: [[[-125, 48], [-125, 25], [-66, 25], [-66, 48], [-125, 48]]] }
-            },
-            {
-              type: "Feature", 
-              properties: { name: "India" },
-              geometry: { type: "Polygon", coordinates: [[[68, 37], [68, 8], [97, 8], [97, 37], [68, 37]]] }
-            },
-            {
-              type: "Feature",
-              properties: { name: "United Kingdom" },
-              geometry: { type: "Polygon", coordinates: [[[-8, 60], [-8, 50], [2, 50], [2, 60], [-8, 60]]] }
-            },
-            {
-              type: "Feature",
-              properties: { name: "Canada" },
-              geometry: { type: "Polygon", coordinates: [[[-141, 84], [-141, 42], [-52, 42], [-52, 84], [-141, 84]]] }
-            },
-            {
-              type: "Feature",
-              properties: { name: "Australia" },
-              geometry: { type: "Polygon", coordinates: [[[113, -10], [113, -44], [154, -44], [154, -10], [113, -10]]] }
-            },
-            {
-              type: "Feature",
-              properties: { name: "Germany" },
-              geometry: { type: "Polygon", coordinates: [[[6, 55], [6, 47], [15, 47], [15, 55], [6, 55]]] }
-            },
-            {
-              type: "Feature",
-              properties: { name: "France" },
-              geometry: { type: "Polygon", coordinates: [[[-5, 51], [-5, 41], [10, 41], [10, 51], [-5, 51]]] }
-            },
-            {
-              type: "Feature",
-              properties: { name: "Japan" },
-              geometry: { type: "Polygon", coordinates: [[[129, 46], [129, 30], [146, 30], [146, 46], [129, 46]]] }
-            },
-            {
-              type: "Feature",
-              properties: { name: "Brazil" },
-              geometry: { type: "Polygon", coordinates: [[[-74, 5], [-74, -34], [-34, -34], [-34, 5], [-74, 5]]] }
-            },
-            {
-              type: "Feature",
-              properties: { name: "South Africa" },
-              geometry: { type: "Polygon", coordinates: [[[16, -22], [16, -35], [33, -35], [33, -22], [16, -22]]] }
-            }
-          ]
-        };
-        setGeoData(fallbackData);
+        setGeoData(null);
       }
     };
     fetchGeoData();
@@ -205,6 +189,21 @@ function VisualizationPage() {
         console.log('Sales by location:', locationData.values);
         console.log('Total products in database:', response.data.length);
         
+        // Debug: Log category data
+        const categoryData = dataBy('category', 'totalSales');
+        console.log('Category data for visualization:', categoryData);
+        console.log('Available categories:', categoryData.keys);
+        console.log('Sales by category:', categoryData.values);
+        
+        // Debug: Log price data
+        const prices = response.data.map(item => item.price || 0).filter(price => price > 0);
+        console.log('Price data:', {
+          min: Math.min(...prices),
+          max: Math.max(...prices),
+          average: prices.reduce((a, b) => a + b, 0) / prices.length,
+          count: prices.length
+        });
+        
         // Test: Show all products with their locations
         console.log('📊 All products with locations:');
         response.data.forEach((product, index) => {
@@ -216,7 +215,7 @@ function VisualizationPage() {
           console.warn('No data found in database! Please add some data through the form first.');
         }
       } catch (error) {
-        console.error("Error fetching data:", error);
+        console.error('Error fetching data:', error);
       } finally {
         setIsLoading(false);
       }
@@ -230,20 +229,201 @@ function VisualizationPage() {
     }
   }, [location.state]);
 
+  // Cleanup insights when component unmounts or data changes
+  useEffect(() => {
+    return () => {
+      setChartInsights({});
+      setHoveredChart(null);
+      setInsightLoading(false);
+    };
+  }, [productData]);
+
+  // Chart hover handler for insights
+  const handleChartHover = async (chartTitle, chartType, chartData) => {
+    console.log('Chart hover triggered:', chartTitle, chartType);
+    console.log('Product data length:', productData.length);
+    console.log('Chart data received:', chartData);
+    
+    setHoveredChart(chartTitle);
+    
+    // If we already have an insight for this chart, show it immediately
+    if (chartInsights[chartTitle]) {
+      console.log('Using cached insight for:', chartTitle);
+      return;
+    }
+
+    // If already loading for this chart, don't start another request
+    if (insightLoading) {
+      console.log('Already loading insight, skipping request');
+      return;
+    }
+
+    // Show loading state
+    console.log('Starting insight generation for:', chartTitle);
+    setInsightLoading(true);
+
+    try {
+      // Check if we have valid chart data
+      if (!chartData || !chartData.labels || chartData.labels.length === 0) {
+        console.log('No valid chart data, using fallback insight');
+        const fallbackInsight = getFallbackInsight(chartType, chartTitle, productData);
+        setChartInsights(prev => ({
+          ...prev,
+          [chartTitle]: fallbackInsight
+        }));
+        return;
+      }
+      
+      // Try to generate insight from OpenAI with product data
+      const insight = await generateChartInsight(chartData, chartType, chartTitle, productData);
+      
+      console.log('Insight result for', chartTitle, ':', insight ? 'OpenAI insight' : 'Using fallback');
+      
+      // Always set the insight for this chart (no need to check hoveredChart again)
+      if (insight) {
+        setChartInsights(prev => ({
+          ...prev,
+          [chartTitle]: insight
+        }));
+      } else {
+        // Use fallback insight if OpenAI fails
+        const fallbackInsight = getFallbackInsight(chartType, chartTitle, productData);
+        console.log('Using fallback insight for', chartTitle, ':', fallbackInsight);
+        setChartInsights(prev => ({
+          ...prev,
+          [chartTitle]: fallbackInsight
+        }));
+      }
+    } catch (error) {
+      console.error('Error generating insight:', error);
+      // Use fallback insight on error
+      const fallbackInsight = getFallbackInsight(chartType, chartTitle, productData);
+      console.log('Using fallback insight due to error for', chartTitle, ':', fallbackInsight);
+      setChartInsights(prev => ({
+        ...prev,
+        [chartTitle]: fallbackInsight
+      }));
+    } finally {
+      setInsightLoading(false);
+      console.log('Insight generation completed for:', chartTitle);
+    }
+  };
+
+  const handleChartLeave = () => {
+    setHoveredChart(null);
+  };
+
+  // Utility function to safely prepare chart data for API
+  const prepareChartDataForAPI = (chartData) => {
+    try {
+      console.log('Preparing chart data for API:', chartData);
+      
+      // Limit data size to prevent API token limits
+      const limitedData = {
+        labels: chartData.labels?.slice(0, 10) || [],
+        values: chartData.values?.slice(0, 10) || [],
+        summary: {
+          totalItems: chartData.labels?.length || 0,
+          maxValue: Math.max(...(chartData.values || [0])),
+          minValue: Math.min(...(chartData.values || [0])),
+          averageValue: chartData.values?.length > 0 ? 
+            chartData.values.reduce((a, b) => a + b, 0) / chartData.values.length : 0
+        }
+      };
+      
+      console.log('Prepared data for API:', limitedData);
+      return limitedData;
+    } catch (error) {
+      console.error('Error preparing chart data:', error);
+      return { labels: [], values: [], summary: { totalItems: 0, maxValue: 0, minValue: 0, averageValue: 0 } };
+    }
+  };
+
+  // Price range histogram data - Dynamic ranges based on actual data
+  const getDynamicPriceRanges = (data) => {
+    if (!data || data.length === 0) return [];
+    
+    const prices = data.map(item => item.price || 0).filter(price => price > 0);
+    if (prices.length === 0) return [];
+    
+    const minPrice = Math.min(...prices);
+    const maxPrice = Math.max(...prices);
+    const range = maxPrice - minPrice;
+    
+    // Create dynamic ranges based on actual data
+    const numRanges = Math.min(8, Math.max(5, Math.ceil(range / 10000))); // 5-8 ranges
+    const step = range / numRanges;
+    
+    const ranges = [];
+    for (let i = 0; i < numRanges; i++) {
+      const min = minPrice + (i * step);
+      const max = minPrice + ((i + 1) * step);
+      const label = `₹${Math.round(min/1000)}K-${Math.round(max/1000)}K`;
+      ranges.push({ min, max, label });
+    }
+    
+    return ranges;
+  };
+
+  const priceRanges = getDynamicPriceRanges(productData);
+  const priceHistogramData = priceRanges.map(range => ({
+    label: range.label,
+    count: productData.filter(item => (item.price || 0) >= range.min && (item.price || 0) < range.max).length
+  })).filter(item => item.count > 0); // Only show ranges with data
+
+  // Enhanced dataBy function with better error handling
   const dataBy = (key, valueKey) => {
-    const uniqueKeys = [...new Set(productData.map(item => item[key]).filter(Boolean))];
-    const values = uniqueKeys.map(k =>
-      productData.filter(item => item[key] === k).reduce((acc, item) => acc + (item[valueKey] || 0), 0)
+    if (!productData || !Array.isArray(productData) || productData.length === 0) {
+      console.log('dataBy: No product data available');
+      return { keys: [], values: [] };
+    }
+    
+    // Filter out null/undefined values and ensure we have valid data
+    const validData = productData.filter(item => 
+      item[key] && item[key] !== null && item[key] !== undefined &&
+      (item[valueKey] !== null && item[valueKey] !== undefined)
     );
+    
+    if (validData.length === 0) {
+      console.log(`dataBy: No valid data for ${key} and ${valueKey}`);
+      return { keys: [], values: [] };
+    }
+    
+    const uniqueKeys = [...new Set(validData.map(item => item[key]))];
+    const values = uniqueKeys.map(k => {
+      const items = validData.filter(item => item[key] === k);
+      return items.reduce((acc, item) => acc + (Number(item[valueKey]) || 0), 0);
+    });
+    
+    console.log(`dataBy(${key}, ${valueKey}):`, { keys: uniqueKeys, values });
     return { keys: uniqueKeys, values };
   };
 
   const averageBy = (key, valueKey) => {
-    const uniqueKeys = [...new Set(productData.map(item => item[key]).filter(Boolean))];
+    if (!productData || !Array.isArray(productData) || productData.length === 0) {
+      console.log('averageBy: No product data available');
+      return { keys: [], values: [] };
+    }
+    
+    // Filter out null/undefined values and ensure we have valid data
+    const validData = productData.filter(item => 
+      item[key] && item[key] !== null && item[key] !== undefined &&
+      (item[valueKey] !== null && item[valueKey] !== undefined)
+    );
+    
+    if (validData.length === 0) {
+      console.log(`averageBy: No valid data for ${key} and ${valueKey}`);
+      return { keys: [], values: [] };
+    }
+    
+    const uniqueKeys = [...new Set(validData.map(item => item[key]))];
     const values = uniqueKeys.map(k => {
-      const items = productData.filter(item => item[key] === k);
-      return items.reduce((acc, item) => acc + (item[valueKey] || 0), 0) / items.length;
+      const items = validData.filter(item => item[key] === k);
+      const sum = items.reduce((acc, item) => acc + (Number(item[valueKey]) || 0), 0);
+      return items.length > 0 ? sum / items.length : 0;
     });
+    
+    console.log(`averageBy(${key}, ${valueKey}):`, { keys: uniqueKeys, values });
     return { keys: uniqueKeys, values };
   };
 
@@ -252,11 +432,7 @@ function VisualizationPage() {
     return data.map(item => item !== undefined && item !== null ? item : defaultValue);
   };
 
-  const profitByLocation = dataBy('location', 'profit');
-  const locationProfitMap = profitByLocation.keys.reduce((acc, loc, i) => {
-    acc[loc] = profitByLocation.values[i];
-    return acc;
-  }, {});
+  // const profitByLocation = dataBy('location', 'profit'); // Removed unused variable
 
   // Enhanced chart options with modern styling
   const chartOptions = { 
@@ -336,25 +512,6 @@ function VisualizationPage() {
   // Most Purchased Country (by quantity)
   const mostPurchasedCountryData = dataBy('location', 'quantity');
   const mostPurchasedCountry = mostPurchasedCountryData.keys[mostPurchasedCountryData.values.indexOf(Math.max(...mostPurchasedCountryData.values))];
-
-  // Price range histogram data
-  const priceRanges = [
-    { min: 0, max: 5000, label: '₹0-5K' },
-    { min: 5000, max: 10000, label: '₹5K-10K' },
-    { min: 10000, max: 15000, label: '₹10K-15K' },
-    { min: 15000, max: 20000, label: '₹15K-20K' },
-    { min: 20000, max: 25000, label: '₹20K-25K' },
-    { min: 25000, max: 30000, label: '₹25K-30K' },
-    { min: 30000, max: 35000, label: '₹30K-35K' },
-    { min: 35000, max: 40000, label: '₹35K-40K' },
-    { min: 40000, max: 45000, label: '₹40K-45K' },
-    { min: 45000, max: 50000, label: '₹45K-50K' }
-  ];
-
-  const priceHistogramData = priceRanges.map(range => ({
-    label: range.label,
-    count: productData.filter(item => item.price >= range.min && item.price < range.max).length
-  }));
 
   // Top 5 products by sales
   const topProducts = [...productData]
@@ -440,6 +597,51 @@ function VisualizationPage() {
     </div>
   );
 
+  // Insight Tooltip Component
+  const InsightTooltip = ({ chartTitle, isVisible, isLoading, insight }) => {
+    console.log('InsightTooltip render:', { chartTitle, isVisible, isLoading, insight: insight ? insight.substring(0, 50) + '...' : 'null' });
+    
+    if (!isVisible) return null;
+
+    return (
+      <div className="insight-tooltip">
+        <div className="insight-header">
+          <span className="insight-icon">💡</span>
+          <span className="insight-title">Chart Insight</span>
+        </div>
+        <div className="insight-content">
+          {isLoading ? (
+            <div className="insight-loading">
+              <div className="loading-spinner"></div>
+              <span>Generating insight...</span>
+            </div>
+          ) : (
+            <p className="insight-text">{insight}</p>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  const handleInsightButton = async (chartTitle, chartType, chartData) => {
+    if (activeInsight === chartTitle) {
+      setActiveInsight(null);
+      return;
+    }
+    setActiveInsight(chartTitle);
+    // If already loaded, do nothing
+    if (chartInsights[chartTitle]) return;
+    setInsightLoading(true);
+    try {
+      const insight = await generateChartInsight(chartData, chartType, chartTitle, productData);
+      setChartInsights(prev => ({ ...prev, [chartTitle]: insight || getFallbackInsight(chartType, chartTitle, productData) }));
+    } catch (e) {
+      setChartInsights(prev => ({ ...prev, [chartTitle]: getFallbackInsight(chartType, chartTitle, productData) }));
+    } finally {
+      setInsightLoading(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="visualization-container">
@@ -450,7 +652,7 @@ function VisualizationPage() {
               Table View
             </button>
             <button className="go-home-button" onClick={() => navigate('/form')}>
-              Go to Home
+              Add Product
             </button>
           </div>
         </div>
@@ -496,9 +698,11 @@ function VisualizationPage() {
             Table View
           </button>
           <button className="go-home-button" onClick={() => navigate('/form')}>
-            Go to Home
+            Add Product
           </button>
+
         </div>
+
       </div>
       
       <div className="dashboard-layout">
@@ -633,7 +837,24 @@ function VisualizationPage() {
               <div className="chart-section">
                 <h3>📊 Advanced Insights & KPIs</h3>
                 <div className="chart-grid">
-                  <div className="chart">
+                  {/* Profitability Ratio per Category */}
+                  <div className="chart chart-with-insight" style={{ position: 'relative' }}>
+                    <AIButton
+                      onClick={() => handleInsightButton(
+                        'Profitability Ratio per Category',
+                        'Radar',
+                        prepareChartDataForAPI({
+                          labels: dataBy('category', 'totalSales').keys,
+                          values: dataBy('category', 'totalSales').keys.map(category => {
+                            const categorySales = dataBy('category', 'totalSales').values[dataBy('category', 'totalSales').keys.indexOf(category)];
+                            const categoryProfit = dataBy('category', 'profit').values[dataBy('category', 'profit').keys.indexOf(category)];
+                            return categorySales ? ((categoryProfit / categorySales) * 100) : 0;
+                          })
+                        })
+                      )}
+                      isLoading={insightLoading && activeInsight === 'Profitability Ratio per Category'}
+                      isActive={activeInsight === 'Profitability Ratio per Category'}
+                    />
                     <h4>🎯 Profitability Ratio per Category</h4>
                     <Radar data={{
                       labels: dataBy('category', 'totalSales').keys,
@@ -670,10 +891,33 @@ function VisualizationPage() {
                         }
                       }
                     }} />
+                    {activeInsight === 'Profitability Ratio per Category' && (
+                      <InsightTooltip
+                        chartTitle="Profitability Ratio per Category"
+                        isVisible={true}
+                        isLoading={insightLoading && activeInsight === 'Profitability Ratio per Category'}
+                        insight={chartInsights['Profitability Ratio per Category']}
+                      />
+                    )}
                   </div>
-
-                  {/* 1. Radar: Category-wise Average Profit Margin */}
-                  <div className="chart">
+                  {/* Category-wise Average Profit Margin (%) */}
+                  <div className="chart chart-with-insight" style={{ position: 'relative' }}>
+                    <AIButton
+                      onClick={() => handleInsightButton(
+                        'Category-wise Average Profit Margin (%)',
+                        'Radar',
+                        prepareChartDataForAPI({
+                          labels: averageBy('category', 'profit').keys,
+                          values: averageBy('category', 'profit').keys.map(category => {
+                            const avgProfit = averageBy('category', 'profit').values[averageBy('category', 'profit').keys.indexOf(category)];
+                            const avgPrice = averageBy('category', 'price').values[averageBy('category', 'price').keys.indexOf(category)];
+                            return avgPrice ? ((avgProfit / avgPrice) * 100) : 0;
+                          })
+                        })
+                      )}
+                      isLoading={insightLoading && activeInsight === 'Category-wise Average Profit Margin (%)'}
+                      isActive={activeInsight === 'Category-wise Average Profit Margin (%)'}
+                    />
                     <h4>📊 Category-wise Average Profit Margin (%)</h4>
                     <Radar data={{
                       labels: averageBy('category', 'profit').keys,
@@ -710,10 +954,29 @@ function VisualizationPage() {
                         }
                       }
                     }} />
+                    {activeInsight === 'Category-wise Average Profit Margin (%)' && (
+                      <InsightTooltip
+                        chartTitle="Category-wise Average Profit Margin (%)"
+                        isVisible={true}
+                        isLoading={insightLoading && activeInsight === 'Category-wise Average Profit Margin (%)'}
+                        insight={chartInsights['Category-wise Average Profit Margin (%)']}
+                      />
+                    )}
                   </div>
-
-                  {/* 2. Radar: Category-wise Average Selling Price */}
-                  <div className="chart">
+                  {/* Category-wise Average Selling Price */}
+                  <div className="chart chart-with-insight" style={{ position: 'relative' }}>
+                    <AIButton
+                      onClick={() => handleInsightButton(
+                        'Category-wise Average Selling Price',
+                        'Radar',
+                        prepareChartDataForAPI({
+                          labels: averageBy('category', 'price').keys,
+                          values: averageBy('category', 'price').values
+                        })
+                      )}
+                      isLoading={insightLoading && activeInsight === 'Category-wise Average Selling Price'}
+                      isActive={activeInsight === 'Category-wise Average Selling Price'}
+                    />
                     <h4>💰 Category-wise Average Selling Price</h4>
                     <Radar data={{
                       labels: averageBy('category', 'price').keys,
@@ -746,50 +1009,14 @@ function VisualizationPage() {
                         }
                       }
                     }} />
-                  </div>
-
-                  {/* 3. Bubble: Product Sales vs. Profit vs. Price */}
-                  <div className="chart">
-                    <h4>🎈 Product Sales vs. Profit vs. Price (Bubble)</h4>
-                    <Bubble data={{
-                      datasets: [
-                        {
-                          label: 'Products',
-                          data: productData.map(p => ({
-                            x: p.totalSales || 0,
-                            y: p.profit || 0,
-                            r: Math.max(5, Math.sqrt(p.price || 0) / 10) // Bubble size by price
-                          })),
-                          backgroundColor: 'rgba(67, 233, 123, 0.6)',
-                          borderColor: 'rgba(67, 233, 123, 1)',
-                          borderWidth: 2
-                        }
-                      ]
-                    }} options={{
-                      ...chartOptions,
-                      plugins: {
-                        ...chartOptions.plugins,
-                        tooltip: {
-                          ...chartOptions.plugins.tooltip,
-                          callbacks: {
-                            label: function(context) {
-                              const d = context.raw;
-                              return `Sales: ₹${d.x.toLocaleString('en-IN')}, Profit: ₹${d.y.toLocaleString('en-IN')}, Price: ₹${Math.round(Math.pow(d.r, 2) * 100).toLocaleString('en-IN')}`;
-                            }
-                          }
-                        }
-                      },
-                      scales: {
-                        x: {
-                          ...chartOptions.scales.x,
-                          title: { display: true, text: 'Total Sales (₹)' }
-                        },
-                        y: {
-                          ...chartOptions.scales.y,
-                          title: { display: true, text: 'Profit (₹)' }
-                        }
-                      }
-                    }} />
+                    {activeInsight === 'Category-wise Average Selling Price' && (
+                      <InsightTooltip
+                        chartTitle="Category-wise Average Selling Price"
+                        isVisible={true}
+                        isLoading={insightLoading && activeInsight === 'Category-wise Average Selling Price'}
+                        insight={chartInsights['Category-wise Average Selling Price']}
+                      />
+                    )}
                   </div>
                 </div>
               </div>
@@ -800,7 +1027,20 @@ function VisualizationPage() {
               <div className="chart-section">
                 <h3>💰 Revenue & Price Analysis</h3>
                 <div className="chart-grid">
-                  <div className="chart">
+                  {/* Total Revenue Over Time */}
+                  <div className="chart chart-with-insight" style={{ position: 'relative' }}>
+                    <AIButton
+                      onClick={() => handleInsightButton(
+                        'Total Revenue Over Time',
+                        'Line',
+                        prepareChartDataForAPI({
+                          labels: productData.map(p => p.time ? new Date(p.time).toLocaleString(undefined, { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : 'Unknown'),
+                          values: productData.map(p => p.totalSales)
+                        })
+                      )}
+                      isLoading={insightLoading && activeInsight === 'Total Revenue Over Time'}
+                      isActive={activeInsight === 'Total Revenue Over Time'}
+                    />
                     <h4>📈 Total Revenue Over Time</h4>
                     <Line data={{
                       labels: productData.map(p => p.time ? new Date(p.time).toLocaleString(undefined, { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : 'Unknown'),
@@ -819,9 +1059,29 @@ function VisualizationPage() {
                         pointHoverRadius: 8
                       }]
                     }} options={chartOptions} />
+                    {activeInsight === 'Total Revenue Over Time' && (
+                      <InsightTooltip
+                        chartTitle="Total Revenue Over Time"
+                        isVisible={true}
+                        isLoading={insightLoading && activeInsight === 'Total Revenue Over Time'}
+                        insight={chartInsights['Total Revenue Over Time']}
+                      />
+                    )}
                   </div>
-
-                  <div className="chart">
+                  {/* Average Selling Price per Product */}
+                  <div className="chart chart-with-insight" style={{ position: 'relative' }}>
+                    <AIButton
+                      onClick={() => handleInsightButton(
+                        'Average Selling Price per Product',
+                        'Bar',
+                        prepareChartDataForAPI({
+                          labels: averageBy('productName', 'price').keys,
+                          values: averageBy('productName', 'price').values
+                        })
+                      )}
+                      isLoading={insightLoading && activeInsight === 'Average Selling Price per Product'}
+                      isActive={activeInsight === 'Average Selling Price per Product'}
+                    />
                     <h4>💵 Average Selling Price per Product</h4>
                     <Bar data={{
                       labels: averageBy('productName', 'price').keys,
@@ -835,47 +1095,165 @@ function VisualizationPage() {
                         borderSkipped: false
                       }]
                     }} options={chartOptions} />
+                    {activeInsight === 'Average Selling Price per Product' && (
+                      <InsightTooltip
+                        chartTitle="Average Selling Price per Product"
+                        isVisible={true}
+                        isLoading={insightLoading && activeInsight === 'Average Selling Price per Product'}
+                        insight={chartInsights['Average Selling Price per Product']}
+                      />
+                    )}
                   </div>
-
-                  <div className="chart">
+                  {/* Top Categories by Total Revenue */}
+                  <div className="chart chart-with-insight" style={{ position: 'relative' }}>
+                    <AIButton
+                      onClick={() => handleInsightButton(
+                        'Top Categories by Total Revenue',
+                        'Doughnut',
+                        prepareChartDataForAPI({
+                          labels: dataBy('category', 'totalSales').keys,
+                          values: dataBy('category', 'totalSales').values
+                        })
+                      )}
+                      isLoading={insightLoading && activeInsight === 'Top Categories by Total Revenue'}
+                      isActive={activeInsight === 'Top Categories by Total Revenue'}
+                    />
                     <h4>🏆 Top Categories by Total Revenue</h4>
-                    <Doughnut data={{
-                      labels: dataBy('category', 'totalSales').keys,
-                      datasets: [{
-                        label: 'Revenue ₹',
-                        data: safeChartData(dataBy('category', 'totalSales').values),
-                        backgroundColor: modernColorPalette,
-                        borderColor: '#fff',
-                        borderWidth: 3,
-                        hoverBorderWidth: 5
-                      }]
-                    }} options={{
-                      ...chartOptions,
-                      cutout: '60%',
-                      plugins: {
-                        ...chartOptions.plugins,
-                        legend: {
-                          ...chartOptions.plugins.legend,
-                          position: 'right'
+                    {dataBy('category', 'totalSales').keys.length > 0 ? (
+                      <Doughnut data={{
+                        labels: dataBy('category', 'totalSales').keys,
+                        datasets: [{
+                          label: 'Revenue ₹',
+                          data: safeChartData(dataBy('category', 'totalSales').values),
+                          backgroundColor: modernColorPalette.slice(0, dataBy('category', 'totalSales').keys.length),
+                          borderColor: '#fff',
+                          borderWidth: 3,
+                          hoverBorderWidth: 5
+                        }]
+                      }} options={{
+                        ...chartOptions,
+                        cutout: '60%',
+                        plugins: {
+                          ...chartOptions.plugins,
+                          legend: {
+                            ...chartOptions.plugins.legend,
+                            position: 'right'
+                          },
+                          tooltip: {
+                            ...chartOptions.plugins.tooltip,
+                            callbacks: {
+                              label: function(context) {
+                                const value = context.parsed || 0;
+                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                                return `${context.label}: ₹${value.toLocaleString('en-IN')} (${percentage}%)`;
+                              }
+                            }
+                          }
                         }
-                      }
-                    }} />
+                      }} />
+                    ) : (
+                      <div style={{ 
+                        height: "300px", 
+                        display: "flex", 
+                        alignItems: "center", 
+                        justifyContent: "center",
+                        backgroundColor: "#f8f9fa",
+                        borderRadius: "8px"
+                      }}>
+                        <p>No category data available</p>
+                      </div>
+                    )}
+                    {activeInsight === 'Top Categories by Total Revenue' && (
+                      <InsightTooltip
+                        chartTitle="Top Categories by Total Revenue"
+                        isVisible={true}
+                        isLoading={insightLoading && activeInsight === 'Top Categories by Total Revenue'}
+                        insight={chartInsights['Top Categories by Total Revenue']}
+                      />
+                    )}
                   </div>
-
-                  <div className="chart">
+                  {/* Price Distribution Analysis */}
+                  <div className="chart chart-with-insight" style={{ position: 'relative' }}>
+                    <AIButton
+                      onClick={() => handleInsightButton(
+                        'Price Distribution Analysis',
+                        'Bar',
+                        prepareChartDataForAPI({
+                          labels: priceHistogramData.map(d => d.label),
+                          values: priceHistogramData.map(d => d.count)
+                        })
+                      )}
+                      isLoading={insightLoading && activeInsight === 'Price Distribution Analysis'}
+                      isActive={activeInsight === 'Price Distribution Analysis'}
+                    />
                     <h4>💎 Price Distribution Analysis</h4>
-                    <Bar data={{
-                      labels: priceHistogramData.map(d => d.label),
-                      datasets: [{
-                        label: 'Number of Products',
-                        data: safeChartData(priceHistogramData.map(d => d.count)),
-                        backgroundColor: 'rgba(79, 172, 254, 0.8)',
-                        borderColor: 'rgba(79, 172, 254, 1)',
-                        borderWidth: 2,
-                        borderRadius: 8,
-                        borderSkipped: false
-                      }]
-                    }} options={chartOptions} />
+                    {priceHistogramData.length > 0 ? (
+                      <Bar data={{
+                        labels: priceHistogramData.map(d => d.label),
+                        datasets: [{
+                          label: 'Number of Products',
+                          data: safeChartData(priceHistogramData.map(d => d.count)),
+                          backgroundColor: 'rgba(79, 172, 254, 0.8)',
+                          borderColor: 'rgba(79, 172, 254, 1)',
+                          borderWidth: 2,
+                          borderRadius: 8,
+                          borderSkipped: false
+                        }]
+                      }} options={{
+                        ...chartOptions,
+                        plugins: {
+                          ...chartOptions.plugins,
+                          tooltip: {
+                            ...chartOptions.plugins.tooltip,
+                            callbacks: {
+                              label: function(context) {
+                                const value = context.parsed.y || 0;
+                                const total = productData.length;
+                                const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                                return `Products: ${value} (${percentage}%)`;
+                              }
+                            }
+                          }
+                        },
+                        scales: {
+                          y: {
+                            ...chartOptions.scales.y,
+                            beginAtZero: true,
+                            title: {
+                              display: true,
+                              text: 'Number of Products'
+                            }
+                          },
+                          x: {
+                            ...chartOptions.scales.x,
+                            title: {
+                              display: true,
+                              text: 'Price Range'
+                            }
+                          }
+                        }
+                      }} />
+                    ) : (
+                      <div style={{ 
+                        height: "300px", 
+                        display: "flex", 
+                        alignItems: "center", 
+                        justifyContent: "center",
+                        backgroundColor: "#f8f9fa",
+                        borderRadius: "8px"
+                      }}>
+                        <p>No price data available</p>
+                      </div>
+                    )}
+                    {activeInsight === 'Price Distribution Analysis' && (
+                      <InsightTooltip
+                        chartTitle="Price Distribution Analysis"
+                        isVisible={true}
+                        isLoading={insightLoading && activeInsight === 'Price Distribution Analysis'}
+                        insight={chartInsights['Price Distribution Analysis']}
+                      />
+                    )}
                   </div>
                 </div>
               </div>
@@ -886,7 +1264,20 @@ function VisualizationPage() {
               <div className="chart-section">
                 <h3>📈 Profit Analytics</h3>
                 <div className="chart-grid">
-                  <div className="chart">
+                  {/* Profit Margin per Product */}
+                  <div className="chart chart-with-insight" style={{ position: 'relative' }}>
+                    <AIButton
+                      onClick={() => handleInsightButton(
+                        'Profit Margin per Product',
+                        'Bar',
+                        prepareChartDataForAPI({
+                          labels: productData.map(p => p.productName || 'Unknown'),
+                          values: productData.map(p => p.price ? ((p.profit / p.price) * 100) : 0)
+                        })
+                      )}
+                      isLoading={insightLoading && activeInsight === 'Profit Margin per Product'}
+                      isActive={activeInsight === 'Profit Margin per Product'}
+                    />
                     <h4>📊 Profit Margin per Product</h4>
                     <Bar data={{
                       labels: productData.map(p => p.productName || 'Unknown'),
@@ -918,9 +1309,29 @@ function VisualizationPage() {
                         }
                       }
                     }} />
+                    {activeInsight === 'Profit Margin per Product' && (
+                      <InsightTooltip
+                        chartTitle="Profit Margin per Product"
+                        isVisible={true}
+                        isLoading={insightLoading && activeInsight === 'Profit Margin per Product'}
+                        insight={chartInsights['Profit Margin per Product']}
+                      />
+                    )}
                   </div>
-
-                  <div className="chart">
+                  {/* Total Profit Over Time */}
+                  <div className="chart chart-with-insight" style={{ position: 'relative' }}>
+                    <AIButton
+                      onClick={() => handleInsightButton(
+                        'Total Profit Over Time',
+                        'Line',
+                        prepareChartDataForAPI({
+                          labels: productData.map(p => p.time ? new Date(p.time).toLocaleString(undefined, { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : 'Unknown'),
+                          values: productData.map(p => p.profit)
+                        })
+                      )}
+                      isLoading={insightLoading && activeInsight === 'Total Profit Over Time'}
+                      isActive={activeInsight === 'Total Profit Over Time'}
+                    />
                     <h4>📈 Total Profit Over Time</h4>
                     <Line data={{
                       labels: productData.map(p => p.time ? new Date(p.time).toLocaleString(undefined, { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : 'Unknown'),
@@ -939,9 +1350,29 @@ function VisualizationPage() {
                         pointHoverRadius: 8
                       }]
                     }} options={chartOptions} />
+                    {activeInsight === 'Total Profit Over Time' && (
+                      <InsightTooltip
+                        chartTitle="Total Profit Over Time"
+                        isVisible={true}
+                        isLoading={insightLoading && activeInsight === 'Total Profit Over Time'}
+                        insight={chartInsights['Total Profit Over Time']}
+                      />
+                    )}
                   </div>
-
-                  <div className="chart">
+                  {/* Most Profitable Categories */}
+                  <div className="chart chart-with-insight" style={{ position: 'relative' }}>
+                    <AIButton
+                      onClick={() => handleInsightButton(
+                        'Most Profitable Categories',
+                        'Bar',
+                        prepareChartDataForAPI({
+                          labels: dataBy('category', 'profit').keys,
+                          values: dataBy('category', 'profit').values
+                        })
+                      )}
+                      isLoading={insightLoading && activeInsight === 'Most Profitable Categories'}
+                      isActive={activeInsight === 'Most Profitable Categories'}
+                    />
                     <h4>🏆 Most Profitable Categories</h4>
                     <Bar data={{
                       labels: dataBy('category', 'profit').keys,
@@ -974,9 +1405,29 @@ function VisualizationPage() {
                         }
                       }
                     }} />
+                    {activeInsight === 'Most Profitable Categories' && (
+                      <InsightTooltip
+                        chartTitle="Most Profitable Categories"
+                        isVisible={true}
+                        isLoading={insightLoading && activeInsight === 'Most Profitable Categories'}
+                        insight={chartInsights['Most Profitable Categories']}
+                      />
+                    )}
                   </div>
-
-                  <div className="chart">
+                  {/* Profit vs Sales Correlation */}
+                  <div className="chart chart-with-insight" style={{ position: 'relative' }}>
+                    <AIButton
+                      onClick={() => handleInsightButton(
+                        'Profit vs Sales Correlation',
+                        'Scatter',
+                        prepareChartDataForAPI({
+                          labels: productData.filter(p => p.totalSales !== undefined && p.totalSales !== null && p.profit !== undefined && p.profit !== null).map(p => p.productName),
+                          values: productData.filter(p => p.totalSales !== undefined && p.totalSales !== null && p.profit !== undefined && p.profit !== null).map(p => ({ x: p.totalSales, y: p.profit }))
+                        })
+                      )}
+                      isLoading={insightLoading && activeInsight === 'Profit vs Sales Correlation'}
+                      isActive={activeInsight === 'Profit vs Sales Correlation'}
+                    />
                     <h4>🎯 Profit vs Sales Correlation</h4>
                     <Scatter data={{
                       datasets: [{
@@ -1012,6 +1463,14 @@ function VisualizationPage() {
                         }
                       }
                     }} />
+                    {activeInsight === 'Profit vs Sales Correlation' && (
+                      <InsightTooltip
+                        chartTitle="Profit vs Sales Correlation"
+                        isVisible={true}
+                        isLoading={insightLoading && activeInsight === 'Profit vs Sales Correlation'}
+                        insight={chartInsights['Profit vs Sales Correlation']}
+                      />
+                    )}
                   </div>
                 </div>
               </div>
@@ -1022,7 +1481,20 @@ function VisualizationPage() {
               <div className="chart-section">
                 <h3>📦 Quantity & Product Sales</h3>
                 <div className="chart-grid">
-                  <div className="chart">
+                  {/* Quantity Sold per Product */}
+                  <div className="chart chart-with-insight" style={{ position: 'relative' }}>
+                    <AIButton
+                      onClick={() => handleInsightButton(
+                        'Quantity Sold per Product',
+                        'Bar',
+                        prepareChartDataForAPI({
+                          labels: dataBy('productName', 'quantity').keys,
+                          values: dataBy('productName', 'quantity').values
+                        })
+                      )}
+                      isLoading={insightLoading && activeInsight === 'Quantity Sold per Product'}
+                      isActive={activeInsight === 'Quantity Sold per Product'}
+                    />
                     <h4>📊 Quantity Sold per Product</h4>
                     <Bar data={{
                       labels: dataBy('productName', 'quantity').keys,
@@ -1055,9 +1527,29 @@ function VisualizationPage() {
                         }
                       }
                     }} />
+                    {activeInsight === 'Quantity Sold per Product' && (
+                      <InsightTooltip
+                        chartTitle="Quantity Sold per Product"
+                        isVisible={true}
+                        isLoading={insightLoading && activeInsight === 'Quantity Sold per Product'}
+                        insight={chartInsights['Quantity Sold per Product']}
+                      />
+                    )}
                   </div>
-
-                  <div className="chart">
+                  {/* Top 5 Best-Selling Products */}
+                  <div className="chart chart-with-insight" style={{ position: 'relative' }}>
+                    <AIButton
+                      onClick={() => handleInsightButton(
+                        'Top 5 Best-Selling Products',
+                        'Bar',
+                        prepareChartDataForAPI({
+                          labels: topProducts.map(p => p.productName || 'Unknown'),
+                          values: topProducts.map(p => p.totalSales)
+                        })
+                      )}
+                      isLoading={insightLoading && activeInsight === 'Top 5 Best-Selling Products'}
+                      isActive={activeInsight === 'Top 5 Best-Selling Products'}
+                    />
                     <h4>🏆 Top 5 Best-Selling Products</h4>
                     <Bar data={{
                       labels: topProducts.map(p => p.productName || 'Unknown'),
@@ -1071,9 +1563,29 @@ function VisualizationPage() {
                         borderSkipped: false
                       }]
                     }} options={chartOptions} />
+                    {activeInsight === 'Top 5 Best-Selling Products' && (
+                      <InsightTooltip
+                        chartTitle="Top 5 Best-Selling Products"
+                        isVisible={true}
+                        isLoading={insightLoading && activeInsight === 'Top 5 Best-Selling Products'}
+                        insight={chartInsights['Top 5 Best-Selling Products']}
+                      />
+                    )}
                   </div>
-
-                  <div className="chart">
+                  {/* Category-wise Product Sales */}
+                  <div className="chart chart-with-insight" style={{ position: 'relative' }}>
+                    <AIButton
+                      onClick={() => handleInsightButton(
+                        'Category-wise Product Sales',
+                        'Bar',
+                        prepareChartDataForAPI({
+                          labels: dataBy('category', 'quantity').keys,
+                          values: dataBy('category', 'quantity').values
+                        })
+                      )}
+                      isLoading={insightLoading && activeInsight === 'Category-wise Product Sales'}
+                      isActive={activeInsight === 'Category-wise Product Sales'}
+                    />
                     <h4>📈 Category-wise Product Sales</h4>
                     <Bar data={{
                       labels: dataBy('category', 'quantity').keys,
@@ -1107,6 +1619,14 @@ function VisualizationPage() {
                         }
                       }
                     } />
+                    {activeInsight === 'Category-wise Product Sales' && (
+                      <InsightTooltip
+                        chartTitle="Category-wise Product Sales"
+                        isVisible={true}
+                        isLoading={insightLoading && activeInsight === 'Category-wise Product Sales'}
+                        insight={chartInsights['Category-wise Product Sales']}
+                      />
+                    )}
                   </div>
                 </div>
               </div>

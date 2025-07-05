@@ -60,6 +60,171 @@ app.get('/api/products', async (req, res) => {
   }
 });
 
+// New analytics endpoint for detailed insights
+app.get('/api/analytics', async (req, res) => {
+  try {
+    const products = await Product.find();
+    
+    if (products.length === 0) {
+      return res.json({
+        message: 'No data available for analysis',
+        summary: {
+          totalProducts: 0,
+          totalRevenue: 0,
+          totalProfit: 0,
+          totalUnits: 0
+        }
+      });
+    }
+
+    // Calculate comprehensive analytics
+    const totalRevenue = products.reduce((sum, p) => sum + (p.totalSales || 0), 0);
+    const totalProfit = products.reduce((sum, p) => sum + (p.profit || 0), 0);
+    const totalUnits = products.reduce((sum, p) => sum + (p.quantity || 0), 0);
+    const averagePrice = products.reduce((sum, p) => sum + (p.price || 0), 0) / products.length;
+    const averageProfit = products.reduce((sum, p) => sum + (p.profit || 0), 0) / products.length;
+    const profitMargin = totalRevenue > 0 ? (totalProfit / totalRevenue) * 100 : 0;
+
+    // Category analysis
+    const categories = [...new Set(products.map(p => p.category))];
+    const categoryAnalysis = {};
+    categories.forEach(category => {
+      const categoryProducts = products.filter(p => p.category === category);
+      const categoryRevenue = categoryProducts.reduce((sum, p) => sum + (p.totalSales || 0), 0);
+      const categoryProfit = categoryProducts.reduce((sum, p) => sum + (p.profit || 0), 0);
+      const categoryUnits = categoryProducts.reduce((sum, p) => sum + (p.quantity || 0), 0);
+      
+      categoryAnalysis[category] = {
+        count: categoryProducts.length,
+        totalRevenue: categoryRevenue,
+        totalProfit: categoryProfit,
+        totalUnits: categoryUnits,
+        averagePrice: categoryProducts.reduce((sum, p) => sum + (p.price || 0), 0) / categoryProducts.length,
+        averageProfit: categoryProfit / categoryProducts.length,
+        averageQuantity: categoryUnits / categoryProducts.length,
+        profitMargin: categoryRevenue > 0 ? (categoryProfit / categoryRevenue) * 100 : 0,
+        revenueShare: (categoryRevenue / totalRevenue) * 100,
+        profitShare: (categoryProfit / totalProfit) * 100,
+        products: categoryProducts.map(p => p.productName)
+      };
+    });
+
+    // Location analysis
+    const locations = [...new Set(products.map(p => p.location))];
+    const locationAnalysis = {};
+    locations.forEach(location => {
+      const locationProducts = products.filter(p => p.location === location);
+      const locationRevenue = locationProducts.reduce((sum, p) => sum + (p.totalSales || 0), 0);
+      const locationProfit = locationProducts.reduce((sum, p) => sum + (p.profit || 0), 0);
+      const locationUnits = locationProducts.reduce((sum, p) => sum + (p.quantity || 0), 0);
+      
+      locationAnalysis[location] = {
+        count: locationProducts.length,
+        totalRevenue: locationRevenue,
+        totalProfit: locationProfit,
+        totalUnits: locationUnits,
+        averagePrice: locationProducts.reduce((sum, p) => sum + (p.price || 0), 0) / locationProducts.length,
+        averageProfit: locationProfit / locationProducts.length,
+        averageQuantity: locationUnits / locationProducts.length,
+        profitMargin: locationRevenue > 0 ? (locationProfit / locationRevenue) * 100 : 0,
+        revenueShare: (locationRevenue / totalRevenue) * 100,
+        profitShare: (locationProfit / totalProfit) * 100
+      };
+    });
+
+    // Top performers
+    const bestSellingProduct = products.reduce((best, current) => 
+      (current.totalSales > best.totalSales) ? current : best, { totalSales: 0, productName: 'N/A' });
+    
+    const mostProfitableProduct = products.reduce((best, current) => 
+      (current.profit > best.profit) ? current : best, { profit: 0, productName: 'N/A' });
+    
+    const highestPricedProduct = products.reduce((best, current) => 
+      (current.price > best.price) ? current : best, { price: 0, productName: 'N/A' });
+    
+    const mostSoldProduct = products.reduce((best, current) => 
+      (current.quantity > best.quantity) ? current : best, { quantity: 0, productName: 'N/A' });
+
+    // Time analysis
+    const timeAnalysis = {
+      hourlySales: Array(24).fill(0),
+      dailySales: {},
+      monthlySales: {}
+    };
+
+    products.forEach(product => {
+      if (product.time) {
+        const date = new Date(product.time);
+        if (!isNaN(date)) {
+          const hour = date.getHours();
+          const day = date.toDateString();
+          const month = date.toLocaleDateString('en-US', { year: 'numeric', month: 'long' });
+          
+          timeAnalysis.hourlySales[hour] += (product.totalSales || 0);
+          timeAnalysis.dailySales[day] = (timeAnalysis.dailySales[day] || 0) + (product.totalSales || 0);
+          timeAnalysis.monthlySales[month] = (timeAnalysis.monthlySales[month] || 0) + (product.totalSales || 0);
+        }
+      }
+    });
+
+    // Statistical measures
+    const priceRange = {
+      min: Math.min(...products.map(p => p.price || 0)),
+      max: Math.max(...products.map(p => p.price || 0)),
+      median: products.map(p => p.price || 0).sort((a, b) => a - b)[Math.floor(products.length / 2)]
+    };
+
+    const profitRange = {
+      min: Math.min(...products.map(p => p.profit || 0)),
+      max: Math.max(...products.map(p => p.profit || 0)),
+      median: products.map(p => p.profit || 0).sort((a, b) => a - b)[Math.floor(products.length / 2)]
+    };
+
+    const quantityRange = {
+      min: Math.min(...products.map(p => p.quantity || 0)),
+      max: Math.max(...products.map(p => p.quantity || 0)),
+      median: products.map(p => p.quantity || 0).sort((a, b) => a - b)[Math.floor(products.length / 2)]
+    };
+
+    const analytics = {
+      summary: {
+        totalProducts: products.length,
+        totalRevenue,
+        totalProfit,
+        totalUnits,
+        averagePrice,
+        averageProfit,
+        profitMargin,
+        categories: categories.length,
+        locations: locations.length
+      },
+      categoryAnalysis,
+      locationAnalysis,
+      topPerformers: {
+        bestSellingProduct,
+        mostProfitableProduct,
+        highestPricedProduct,
+        mostSoldProduct
+      },
+      timeAnalysis,
+      statistics: {
+        priceRange,
+        profitRange,
+        quantityRange
+      },
+      dateRange: {
+        earliest: new Date(Math.min(...products.map(p => new Date(p.time || p.createdAt)))),
+        latest: new Date(Math.max(...products.map(p => new Date(p.time || p.createdAt))))
+      }
+    };
+
+    res.json(analytics);
+  } catch (err) {
+    console.error('Error generating analytics:', err);
+    res.status(500).json({ message: 'Error generating analytics' });
+  }
+});
+
 app.put('/api/products/:id', async (req, res) => {
   try {
     console.log('Update request received for ID:', req.params.id);

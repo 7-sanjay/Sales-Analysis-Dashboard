@@ -35,7 +35,7 @@ function LoginRegister() {
     e.preventDefault();
     try {
       await signInWithEmailAndPassword(auth, email, password); 
-      navigate('/visualization');
+      navigate('/visualization', { state: { section: 'home' } });
     } catch (err) {
       setError("Failed to log in. Check your credentials.");
     }
