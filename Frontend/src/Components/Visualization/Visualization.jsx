@@ -50,8 +50,6 @@ const countryNameMapping = {
   // Add more variations as needed
 };
 
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL;
-
 // Add a helper for the AI button
 const AIButton = ({ onClick, isLoading, isActive }) => (
   <button
@@ -172,7 +170,7 @@ function VisualizationPage() {
     const fetchData = async () => {
       setIsLoading(true);
       try {
-        const response = await axios.get(`${API_BASE_URL}/api/products`);
+        const response = await axios.get('/api/products');
         console.log('Raw API response:', response.data);
         setProductData(response.data);
         const profit = response.data.reduce((acc, item) => acc + (item.profit || 0), 0);
@@ -563,22 +561,28 @@ function VisualizationPage() {
   // Calculate sums for last 3 hours and previous 3 hours
   function sumByTimeWindow(key) {
     const last3 = productData.filter(p => isInRange(p, threeHoursAgo, now)).reduce((acc, p) => acc + (p[key] || 0), 0);
-    const prev3 = productData.filter(p => isInRange(p, sixHoursAgo, threeHoursAgo)).reduce((acc, p) => acc + (p[key] || 0), 0);
-    return { last3, prev3 };
+    // const prev3 = productData.filter(p => isInRange(p, sixHoursAgo, threeHoursAgo)).reduce((acc, p) => acc + (p[key] || 0), 0);
+    const total = productData.reduce((acc, p) => acc + (p[key] || 0), 0);
+    const rest = total - last3;
+    return { last3, rest, total };
   }
 
-  function percentChange(last, prev) {
-    if (prev === 0) return last === 0 ? 0 : 100;
-    return ((last - prev) / Math.abs(prev)) * 100;
+  function percentChange(last, rest) {
+    if (rest === 0) {
+      if (last > 0) return 100; // All new data, show 100% up
+      if (last < 0) return -100; // Should not happen for sales, but handle
+      return 0; // Both zero
+    }
+    return ((last - rest) / Math.abs(rest)) * 100;
   }
 
   const revenueWindow = sumByTimeWindow('totalSales');
   const profitWindow = sumByTimeWindow('profit');
   const unitsWindow = sumByTimeWindow('quantity');
 
-  const revenueChange = percentChange(revenueWindow.last3, revenueWindow.prev3);
-  const profitChange = percentChange(profitWindow.last3, profitWindow.prev3);
-  const unitsChange = percentChange(unitsWindow.last3, unitsWindow.prev3);
+  const revenueChange = percentChange(revenueWindow.last3, revenueWindow.rest);
+  const profitChange = percentChange(profitWindow.last3, profitWindow.rest);
+  const unitsChange = percentChange(unitsWindow.last3, unitsWindow.rest);
 
   function renderChange(val, small) {
     if (val === 0) return <span style={{ color: '#888', fontSize: small ? '0.95rem' : undefined, fontWeight: 500 }}>&#8596; 0%</span>;
@@ -700,7 +704,6 @@ function VisualizationPage() {
           <button className="go-home-button" onClick={() => navigate('/form')}>
             Add Product
           </button>
-
         </div>
 
       </div>
@@ -1637,6 +1640,96 @@ function VisualizationPage() {
               <div className="chart-section">
                 <h3>⏰ Time & Trend Analysis</h3>
                 <div className="chart-grid">
+                  {/* Sales by Date - New Chart */}
+                  <div className="chart chart-with-insight" style={{ position: 'relative' }}>
+                    <AIButton
+                      onClick={() => {
+                        // Group sales by date
+                        const salesByDate = {};
+                        productData.forEach(item => {
+                          if (item.time) {
+                            const date = new Date(item.time);
+                            const dateKey = date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+                            salesByDate[dateKey] = (salesByDate[dateKey] || 0) + (item.totalSales || 0);
+                          }
+                        });
+                        
+                        const sortedDates = Object.keys(salesByDate).sort((a, b) => new Date(a) - new Date(b));
+                        
+                        handleInsightButton(
+                          'Sales by Date',
+                          'Bar',
+                          prepareChartDataForAPI({
+                            labels: sortedDates,
+                            values: sortedDates.map(date => salesByDate[date])
+                          })
+                        );
+                      }}
+                      isLoading={insightLoading && activeInsight === 'Sales by Date'}
+                      isActive={activeInsight === 'Sales by Date'}
+                    />
+                    <h4>📅 Sales by Date</h4>
+                    <Bar data={{
+                      labels: (() => {
+                        const salesByDate = {};
+                        productData.forEach(item => {
+                          if (item.time) {
+                            const date = new Date(item.time);
+                            const dateKey = date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+                            salesByDate[dateKey] = (salesByDate[dateKey] || 0) + (item.totalSales || 0);
+                          }
+                        });
+                        return Object.keys(salesByDate).sort((a, b) => new Date(a) - new Date(b));
+                      })(),
+                      datasets: [{
+                        label: 'Total Sales ₹',
+                        data: (() => {
+                          const salesByDate = {};
+                          productData.forEach(item => {
+                            if (item.time) {
+                              const date = new Date(item.time);
+                              const dateKey = date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+                              salesByDate[dateKey] = (salesByDate[dateKey] || 0) + (item.totalSales || 0);
+                            }
+                          });
+                          const sortedDates = Object.keys(salesByDate).sort((a, b) => new Date(a) - new Date(b));
+                          return safeChartData(sortedDates.map(date => salesByDate[date]));
+                        })(),
+                        backgroundColor: 'rgba(79, 172, 254, 0.8)',
+                        borderColor: 'rgba(79, 172, 254, 1)',
+                        borderWidth: 2,
+                        borderRadius: 8,
+                        borderSkipped: false
+                      }]
+                    }} options={{
+                      ...chartOptions,
+                      plugins: {
+                        ...chartOptions.plugins,
+                        legend: {
+                          display: false
+                        },
+                        tooltip: {
+                          ...chartOptions.plugins.tooltip,
+                          callbacks: {
+                            ...chartOptions.plugins.tooltip.callbacks,
+                            label: function(context) {
+                              const value = context.parsed.y || 0;
+                              return `Sales: ₹${value.toLocaleString('en-IN')}`;
+                            }
+                          }
+                        }
+                      }
+                    }} />
+                    {activeInsight === 'Sales by Date' && (
+                      <InsightTooltip
+                        chartTitle="Sales by Date"
+                        isVisible={true}
+                        isLoading={insightLoading && activeInsight === 'Sales by Date'}
+                        insight={chartInsights['Sales by Date']}
+                      />
+                    )}
+                  </div>
+
                   <div className="chart">
                     <h4>📈 Daily Sales Trend</h4>
                     <Line data={{
@@ -1674,6 +1767,345 @@ function VisualizationPage() {
                       }))
                     }} options={chartOptions} />
                   </div>
+
+                  {/* Sales by Date with Quantity - Additional Chart */}
+                  <div className="chart chart-with-insight" style={{ position: 'relative' }}>
+                    <AIButton
+                      onClick={() => {
+                        // Group quantity by date
+                        const quantityByDate = {};
+                        productData.forEach(item => {
+                          if (item.time) {
+                            const date = new Date(item.time);
+                            const dateKey = date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+                            quantityByDate[dateKey] = (quantityByDate[dateKey] || 0) + (item.quantity || 0);
+                          }
+                        });
+                        
+                        const sortedDates = Object.keys(quantityByDate).sort((a, b) => new Date(a) - new Date(b));
+                        
+                        handleInsightButton(
+                          'Quantity Sold by Date',
+                          'Bar',
+                          prepareChartDataForAPI({
+                            labels: sortedDates,
+                            values: sortedDates.map(date => quantityByDate[date])
+                          })
+                        );
+                      }}
+                      isLoading={insightLoading && activeInsight === 'Quantity Sold by Date'}
+                      isActive={activeInsight === 'Quantity Sold by Date'}
+                    />
+                    <h4>📦 Quantity Sold by Date</h4>
+                    <Bar data={{
+                      labels: (() => {
+                        const quantityByDate = {};
+                        productData.forEach(item => {
+                          if (item.time) {
+                            const date = new Date(item.time);
+                            const dateKey = date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+                            quantityByDate[dateKey] = (quantityByDate[dateKey] || 0) + (item.quantity || 0);
+                          }
+                        });
+                        return Object.keys(quantityByDate).sort((a, b) => new Date(a) - new Date(b));
+                      })(),
+                      datasets: [{
+                        label: 'Total Quantity',
+                        data: (() => {
+                          const quantityByDate = {};
+                          productData.forEach(item => {
+                            if (item.time) {
+                              const date = new Date(item.time);
+                              const dateKey = date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+                              quantityByDate[dateKey] = (quantityByDate[dateKey] || 0) + (item.quantity || 0);
+                            }
+                          });
+                          const sortedDates = Object.keys(quantityByDate).sort((a, b) => new Date(a) - new Date(b));
+                          return safeChartData(sortedDates.map(date => quantityByDate[date]));
+                        })(),
+                        backgroundColor: 'rgba(67, 233, 123, 0.8)',
+                        borderColor: 'rgba(67, 233, 123, 1)',
+                        borderWidth: 2,
+                        borderRadius: 8,
+                        borderSkipped: false
+                      }]
+                    }} options={{
+                      ...chartOptions,
+                      plugins: {
+                        ...chartOptions.plugins,
+                        legend: {
+                          display: false
+                        },
+                        tooltip: {
+                          ...chartOptions.plugins.tooltip,
+                          callbacks: {
+                            ...chartOptions.plugins.tooltip.callbacks,
+                            label: function(context) {
+                              const value = context.parsed.y || 0;
+                              return `Quantity: ${value.toLocaleString('en-IN')} units`;
+                            }
+                          }
+                        }
+                      }
+                    }} />
+                    {activeInsight === 'Quantity Sold by Date' && (
+                      <InsightTooltip
+                        chartTitle="Quantity Sold by Date"
+                        isVisible={true}
+                        isLoading={insightLoading && activeInsight === 'Quantity Sold by Date'}
+                        insight={chartInsights['Quantity Sold by Date']}
+                      />
+                    )}
+                  </div>
+
+                  {/* Sales Trend by Date - Line Chart */}
+                  <div className="chart chart-with-insight" style={{ position: 'relative' }}>
+                    <AIButton
+                      onClick={() => {
+                        // Group sales by date
+                        const salesByDate = {};
+                        productData.forEach(item => {
+                          if (item.time) {
+                            const date = new Date(item.time);
+                            const dateKey = date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+                            salesByDate[dateKey] = (salesByDate[dateKey] || 0) + (item.totalSales || 0);
+                          }
+                        });
+                        
+                        const sortedDates = Object.keys(salesByDate).sort((a, b) => new Date(a) - new Date(b));
+                        
+                        handleInsightButton(
+                          'Sales Trend by Date',
+                          'Line',
+                          prepareChartDataForAPI({
+                            labels: sortedDates,
+                            values: sortedDates.map(date => salesByDate[date])
+                          })
+                        );
+                      }}
+                      isLoading={insightLoading && activeInsight === 'Sales Trend by Date'}
+                      isActive={activeInsight === 'Sales Trend by Date'}
+                    />
+                    <h4>📈 Sales Trend by Date</h4>
+                    <Line data={{
+                      labels: (() => {
+                        const salesByDate = {};
+                        productData.forEach(item => {
+                          if (item.time) {
+                            const date = new Date(item.time);
+                            const dateKey = date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+                            salesByDate[dateKey] = (salesByDate[dateKey] || 0) + (item.totalSales || 0);
+                          }
+                        });
+                        return Object.keys(salesByDate).sort((a, b) => new Date(a) - new Date(b));
+                      })(),
+                      datasets: [{
+                        label: 'Total Sales ₹',
+                        data: (() => {
+                          const salesByDate = {};
+                          productData.forEach(item => {
+                            if (item.time) {
+                              const date = new Date(item.time);
+                              const dateKey = date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+                              salesByDate[dateKey] = (salesByDate[dateKey] || 0) + (item.totalSales || 0);
+                            }
+                          });
+                          const sortedDates = Object.keys(salesByDate).sort((a, b) => new Date(a) - new Date(b));
+                          return safeChartData(sortedDates.map(date => salesByDate[date]));
+                        })(),
+                        borderColor: 'rgba(250, 112, 154, 1)',
+                        backgroundColor: 'rgba(250, 112, 154, 0.1)',
+                        tension: 0.4,
+                        fill: true,
+                        borderWidth: 3,
+                        pointBackgroundColor: 'rgba(250, 112, 154, 1)',
+                        pointBorderColor: '#fff',
+                        pointBorderWidth: 2,
+                        pointRadius: 5,
+                        pointHoverRadius: 8
+                      }]
+                    }} options={{
+                      ...chartOptions,
+                      plugins: {
+                        ...chartOptions.plugins,
+                        legend: {
+                          display: false
+                        },
+                        tooltip: {
+                          ...chartOptions.plugins.tooltip,
+                          callbacks: {
+                            ...chartOptions.plugins.tooltip.callbacks,
+                            label: function(context) {
+                              const value = context.parsed.y || 0;
+                              return `Sales: ₹${value.toLocaleString('en-IN')}`;
+                            }
+                          }
+                        }
+                      }
+                    }} />
+                    {activeInsight === 'Sales Trend by Date' && (
+                      <InsightTooltip
+                        chartTitle="Sales Trend by Date"
+                        isVisible={true}
+                        isLoading={insightLoading && activeInsight === 'Sales Trend by Date'}
+                        insight={chartInsights['Sales Trend by Date']}
+                      />
+                    )}
+                  </div>
+
+                  {/* Combined Sales and Quantity by Date */}
+                  <div className="chart chart-with-insight" style={{ position: 'relative' }}>
+                    <AIButton
+                      onClick={() => {
+                        // Group both sales and quantity by date
+                        const salesByDate = {};
+                        const quantityByDate = {};
+                        productData.forEach(item => {
+                          if (item.time) {
+                            const date = new Date(item.time);
+                            const dateKey = date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+                            salesByDate[dateKey] = (salesByDate[dateKey] || 0) + (item.totalSales || 0);
+                            quantityByDate[dateKey] = (quantityByDate[dateKey] || 0) + (item.quantity || 0);
+                          }
+                        });
+                        
+                        const sortedDates = Object.keys(salesByDate).sort((a, b) => new Date(a) - new Date(b));
+                        
+                        handleInsightButton(
+                          'Sales vs Quantity by Date',
+                          'Line',
+                          prepareChartDataForAPI({
+                            labels: sortedDates,
+                            values: [
+                              sortedDates.map(date => salesByDate[date]),
+                              sortedDates.map(date => quantityByDate[date])
+                            ]
+                          })
+                        );
+                      }}
+                      isLoading={insightLoading && activeInsight === 'Sales vs Quantity by Date'}
+                      isActive={activeInsight === 'Sales vs Quantity by Date'}
+                    />
+                    <h4>📊 Sales vs Quantity by Date</h4>
+                    <Line data={{
+                      labels: (() => {
+                        const salesByDate = {};
+                        productData.forEach(item => {
+                          if (item.time) {
+                            const date = new Date(item.time);
+                            const dateKey = date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+                            salesByDate[dateKey] = (salesByDate[dateKey] || 0) + (item.totalSales || 0);
+                          }
+                        });
+                        return Object.keys(salesByDate).sort((a, b) => new Date(a) - new Date(b));
+                      })(),
+                      datasets: [
+                        {
+                          label: 'Total Sales ₹',
+                          data: (() => {
+                            const salesByDate = {};
+                            productData.forEach(item => {
+                              if (item.time) {
+                                const date = new Date(item.time);
+                                const dateKey = date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+                                salesByDate[dateKey] = (salesByDate[dateKey] || 0) + (item.totalSales || 0);
+                              }
+                            });
+                            const sortedDates = Object.keys(salesByDate).sort((a, b) => new Date(a) - new Date(b));
+                            return safeChartData(sortedDates.map(date => salesByDate[date]));
+                          })(),
+                          borderColor: 'rgba(79, 172, 254, 1)',
+                          backgroundColor: 'rgba(79, 172, 254, 0.1)',
+                          tension: 0.4,
+                          fill: false,
+                          borderWidth: 3,
+                          pointBackgroundColor: 'rgba(79, 172, 254, 1)',
+                          pointBorderColor: '#fff',
+                          pointBorderWidth: 2,
+                          pointRadius: 5,
+                          pointHoverRadius: 8,
+                          yAxisID: 'y'
+                        },
+                        {
+                          label: 'Total Quantity',
+                          data: (() => {
+                            const quantityByDate = {};
+                            productData.forEach(item => {
+                              if (item.time) {
+                                const date = new Date(item.time);
+                                const dateKey = date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+                                quantityByDate[dateKey] = (quantityByDate[dateKey] || 0) + (item.quantity || 0);
+                              }
+                            });
+                            const sortedDates = Object.keys(quantityByDate).sort((a, b) => new Date(a) - new Date(b));
+                            return safeChartData(sortedDates.map(date => quantityByDate[date]));
+                          })(),
+                          borderColor: 'rgba(67, 233, 123, 1)',
+                          backgroundColor: 'rgba(67, 233, 123, 0.1)',
+                          tension: 0.4,
+                          fill: false,
+                          borderWidth: 3,
+                          pointBackgroundColor: 'rgba(67, 233, 123, 1)',
+                          pointBorderColor: '#fff',
+                          pointBorderWidth: 2,
+                          pointRadius: 5,
+                          pointHoverRadius: 8,
+                          yAxisID: 'y1'
+                        }
+                      ]
+                    }} options={{
+                      ...chartOptions,
+                      scales: {
+                        ...chartOptions.scales,
+                        y: {
+                          type: 'linear',
+                          display: true,
+                          position: 'left',
+                          title: {
+                            display: true,
+                            text: 'Sales (₹)'
+                          }
+                        },
+                        y1: {
+                          type: 'linear',
+                          display: true,
+                          position: 'right',
+                          title: {
+                            display: true,
+                            text: 'Quantity (units)'
+                          },
+                          grid: {
+                            drawOnChartArea: false,
+                          },
+                        }
+                      },
+                      plugins: {
+                        ...chartOptions.plugins,
+                        tooltip: {
+                          ...chartOptions.plugins.tooltip,
+                          callbacks: {
+                            ...chartOptions.plugins.tooltip.callbacks,
+                            label: function(context) {
+                              const value = context.parsed.y || 0;
+                              if (context.dataset.label === 'Total Sales ₹') {
+                                return `Sales: ₹${value.toLocaleString('en-IN')}`;
+                              } else {
+                                return `Quantity: ${value.toLocaleString('en-IN')} units`;
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }} />
+                    {activeInsight === 'Sales vs Quantity by Date' && (
+                      <InsightTooltip
+                        chartTitle="Sales vs Quantity by Date"
+                        isVisible={true}
+                        isLoading={insightLoading && activeInsight === 'Sales vs Quantity by Date'}
+                        insight={chartInsights['Sales vs Quantity by Date']}
+                      />
+                    )}
+                  </div>
                 </div>
               </div>
             )}
@@ -1688,11 +2120,13 @@ function VisualizationPage() {
                     <h4>🗺️ Purchase Quantity by Country (Interactive Map)</h4>
                     <ReactTooltip>{tooltipContent}</ReactTooltip>
                     {/* Debug info */}
+                    {/* Remove this block:
                     <div style={{ marginBottom: "10px", fontSize: "12px", color: "#666", padding: "8px", backgroundColor: "#f8f9fa", borderRadius: "4px" }}>
                       <p><strong>Map Status:</strong> {geoData ? '✅ Loaded' : '⏳ Loading...'}</p>
                       <p><strong>Products:</strong> {productData.length} items</p>
                       <p><strong>Countries:</strong> {[...new Set(productData.map(p => p.location))].join(', ')}</p>
                     </div>
+                    */}
                     {geoData && (
                       <ComposableMap 
                         data-tip="" 

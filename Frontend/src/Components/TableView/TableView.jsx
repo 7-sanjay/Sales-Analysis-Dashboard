@@ -7,11 +7,10 @@ import './TableView.css';
 function TableView() {
   const navigate = useNavigate();
   const [data, setData] = useState([]);
-  const API_BASE_URL = process.env.REACT_APP_API_BASE_URL;
 
   const fetchData = async () => {
     try {
-      const response = await axios.get(`${API_BASE_URL}/api/products`);
+      const response = await axios.get('/api/products');
       setData(response.data);
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -20,7 +19,7 @@ function TableView() {
 
   const deleteAllData = async () => {
     try {
-      const response = await axios.delete(`${API_BASE_URL}/api/products`);
+      const response = await axios.delete('/api/products');
       setData([]);
       alert(response.data.message);
     } catch (error) {
