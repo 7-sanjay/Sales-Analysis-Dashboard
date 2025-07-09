@@ -170,7 +170,8 @@ function VisualizationPage() {
     const fetchData = async () => {
       setIsLoading(true);
       try {
-        const response = await axios.get('/api/products');
+        const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || '';
+        const response = await axios.get(`${API_BASE_URL}/api/products`);
         console.log('Raw API response:', response.data);
         setProductData(response.data);
         const profit = response.data.reduce((acc, item) => acc + (item.profit || 0), 0);
