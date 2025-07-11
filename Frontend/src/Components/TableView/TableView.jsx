@@ -51,6 +51,10 @@ function TableView() {
         <button className="btn btn-home" onClick={() => navigate('/form')}>
           Add Product
         </button>
+        <button className="btn btn-inventory" onClick={() => navigate('/inventory')}>
+          Inventory Management
+        </button>
+        <button className="btn btn-login" onClick={() => navigate('/')}>Home/Login</button>
         <button className="btn btn-danger" onClick={deleteAllData}>
           Delete All
         </button>

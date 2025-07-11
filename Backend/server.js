@@ -5,6 +5,7 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const morgan = require('morgan');
 const Product = require('./models/Product');
+const Inventory = require('./models/Inventory');
 
 // Create Express app
 const app = express();
@@ -279,6 +280,56 @@ app.post('/api/sales', async (req, res) => {
   } catch (err) {
     console.error('Error saving sale:', err);
     res.status(500).json({ message: 'Error saving sale data' });
+  }
+});
+
+// --- Inventory Routes ---
+// Get all inventory (products.inventory collection)
+app.get('/api/inventory', async (req, res) => {
+  try {
+    const inventory = await Inventory.find();
+    res.json(inventory);
+  } catch (err) {
+    res.status(500).json({ message: 'Error fetching inventory', error: err.message });
+  }
+});
+
+// Add or update inventory for a product in the master list (products.inventory collection)
+app.post('/api/inventory', async (req, res) => {
+  try {
+    console.log('Received inventory data:', req.body);
+    const { productName, category, stock, price = 0, netPrice = 0 } = req.body;
+    // Upsert inventory document by productName and category
+    const inventory = await Inventory.findOneAndUpdate(
+      { productName, category },
+      { $set: { stock, price, netPrice, updatedAt: new Date() } },
+      { upsert: true, new: true }
+    );
+    console.log('Saved inventory document:', inventory);
+    res.status(200).json(inventory);
+  } catch (err) {
+    console.error('Error updating inventory:', err);
+    res.status(500).json({ message: 'Error updating inventory', error: err.message });
+  }
+});
+
+// Reduce stock for a product (products.inventory collection)
+app.post('/api/inventory/reduce', async (req, res) => {
+  try {
+    const { productName, category, quantity } = req.body;
+    const inventory = await Inventory.findOne({ productName, category });
+    if (!inventory) {
+      return res.status(404).json({ message: 'Inventory item not found' });
+    }
+    if (inventory.stock < quantity) {
+      return res.status(400).json({ message: 'Not enough stock' });
+    }
+    inventory.stock -= quantity;
+    inventory.updatedAt = new Date();
+    await inventory.save();
+    res.status(200).json(inventory);
+  } catch (err) {
+    res.status(500).json({ message: 'Error reducing inventory', error: err.message });
   }
 });
 

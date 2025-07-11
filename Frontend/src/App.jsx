@@ -4,6 +4,7 @@ import FormPage from './Components/FormPage/FormPage';
 import TableView from './Components/TableView/TableView';
 import Visualization from './Components/Visualization/Visualization';
 import LoginPage from './Components/LoginPage/LoginPage';
+import InventoryPage from './Components/Inventory/InventoryPage';
 
 function App() {
   const [data, setData] = useState([]);
@@ -19,6 +20,7 @@ function App() {
         <Route path="/form" element={<FormPage addData={addData} />} />
         <Route path="/table-view" element={<TableView data={data} />} />
         <Route path="/visualization" element={<Visualization data={data} />} />
+        <Route path="/inventory" element={<InventoryPage />} />
       </Routes>
     </div>
   );

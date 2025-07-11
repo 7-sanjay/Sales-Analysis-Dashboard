@@ -20,26 +20,75 @@ function FormPage() {
         totalProfit: 0,
         location: '',
     });
-
     const [isEditing, setIsEditing] = useState(false);
+    const [inventory, setInventory] = useState([]);
+    const [inventoryMap, setInventoryMap] = useState({});
+    const [loadingInventory, setLoadingInventory] = useState(true);
+    const [originalQuantity, setOriginalQuantity] = useState(null); // NEW
 
     const getCurrentTime = () => {
         return new Date().toISOString();
     };
+
+    // Fetch inventory on mount
+    useEffect(() => {
+        async function fetchInventory() {
+            setLoadingInventory(true);
+            try {
+                const res = await fetch('/api/inventory');
+                const data = await res.json();
+                setInventory(data);
+                // Build a map for quick lookup
+                const map = {};
+                data.forEach(item => {
+                    map[item.category + '|' + item.productName] = item;
+                });
+                setInventoryMap(map);
+            } catch (err) {
+                setInventory([]);
+                setInventoryMap({});
+            } finally {
+                setLoadingInventory(false);
+            }
+        }
+        fetchInventory();
+    }, []);
 
     useEffect(() => {
         if (location.state && location.state.item) {
             const { item } = location.state;
             setFormData({ ...item, location: item.location || '' });
             setIsEditing(true);
+            setOriginalQuantity(item.quantity); // Store original quantity for edit
         } else {
             setFormData((prevData) => ({
                 ...prevData,
                 time: getCurrentTime(),
                 id: Date.now()
             }));
+            setOriginalQuantity(null);
         }
     }, [location.state]);
+
+    // Auto-fill price and netPrice from inventory when category and productName are selected
+    useEffect(() => {
+        if (formData.category && formData.productName) {
+            const key = formData.category + '|' + formData.productName;
+            const inv = inventoryMap[key];
+            if (inv) {
+                setFormData(prev => ({
+                    ...prev,
+                    price: inv.price,
+                    netPrice: inv.netPrice
+                }));
+            } else {
+                setFormData(prev => ({ ...prev, price: '', netPrice: '' }));
+            }
+        } else {
+            setFormData(prev => ({ ...prev, price: '', netPrice: '' }));
+        }
+        // eslint-disable-next-line
+    }, [formData.category, formData.productName, inventoryMap]);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -67,13 +116,109 @@ function FormPage() {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-
+        const key = formData.category + '|' + formData.productName;
+        const inv = inventoryMap[key];
+        if (!isEditing) {
+            // Check inventory for selected product
+            if (!inv) {
+                alert('Product not found in inventory.');
+                return;
+            }
+            if (!formData.quantity || isNaN(formData.quantity) || Number(formData.quantity) <= 0) {
+                alert('Enter a valid quantity.');
+                return;
+            }
+            if (Number(formData.quantity) > inv.stock) {
+                alert('Not enough stock in inventory.');
+                return;
+            }
+            // Reduce inventory stock
+            try {
+                const res = await fetch('/api/inventory/reduce', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        productName: formData.productName,
+                        category: formData.category,
+                        quantity: Number(formData.quantity)
+                    })
+                });
+                const data = await res.json();
+                if (!res.ok) {
+                    alert(data.message || 'Error reducing inventory');
+                    return;
+                }
+            } catch (err) {
+                alert('Network error while reducing inventory.');
+                return;
+            }
+        } else {
+            // EDITING: adjust inventory if quantity changed
+            const newQty = Number(formData.quantity);
+            const oldQty = Number(originalQuantity);
+            const diff = newQty - oldQty;
+            if (diff !== 0) {
+                if (!inv) {
+                    alert('Product not found in inventory.');
+                    return;
+                }
+                if (diff > 0) {
+                    // Need to reduce inventory by the difference
+                    if (diff > inv.stock) {
+                        alert('Not enough stock in inventory to increase quantity.');
+                        return;
+                    }
+                    try {
+                        const res = await fetch('/api/inventory/reduce', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                productName: formData.productName,
+                                category: formData.category,
+                                quantity: diff
+                            })
+                        });
+                        const data = await res.json();
+                        if (!res.ok) {
+                            alert(data.message || 'Error reducing inventory');
+                            return;
+                        }
+                    } catch (err) {
+                        alert('Network error while reducing inventory.');
+                        return;
+                    }
+                } else {
+                    // diff < 0: increase inventory by -diff
+                    try {
+                        const res = await fetch('/api/inventory', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                productName: formData.productName,
+                                category: formData.category,
+                                stock: inv.stock + Math.abs(diff),
+                                price: inv.price,
+                                netPrice: inv.netPrice
+                            })
+                        });
+                        const data = await res.json();
+                        if (!res.ok) {
+                            alert(data.message || 'Error updating inventory');
+                            return;
+                        }
+                    } catch (err) {
+                        alert('Network error while updating inventory.');
+                        return;
+                    }
+                }
+            }
+        }
+        // Add or update product
         if (isEditing) {
             await updateData(formData);
         } else {
             await addData(formData);
         }
-
         navigate('/table-view');
     };
 
@@ -209,6 +354,7 @@ function FormPage() {
                         onChange={handleChange}
                         value={formData.price}
                         required
+                        disabled={!!(formData.category && formData.productName)}
                     />
                     <input
                         className="form-input"
@@ -225,6 +371,7 @@ function FormPage() {
                         onChange={handleChange}
                         value={formData.netPrice}
                         required
+                        disabled={!!(formData.category && formData.productName)}
                     />
                     <input
                         className="form-input"

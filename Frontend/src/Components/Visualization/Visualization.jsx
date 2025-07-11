@@ -647,6 +647,18 @@ function VisualizationPage() {
     }
   };
 
+  // Before KPI cards
+  console.log('KPI productData:', productData);
+
+  // Helper for safe sparkline data
+  function safeSparklineData(arr) {
+    if (!arr || arr.length === 0 || arr.every(v => !v || v === 0)) {
+      // Return a flat line or a single zero
+      return [0];
+    }
+    return arr;
+  }
+
   if (isLoading) {
     return (
       <div className="visualization-container">
@@ -749,7 +761,7 @@ function VisualizationPage() {
               <div className="kpi-card">
                 <h3>💰 Total Revenue</h3>
                 <p>₹{totalRevenue.toLocaleString('en-IN')}</p>
-                <Sparklines data={productData.map(p => p.totalSales || 0)} height={30} margin={5}>
+                <Sparklines data={safeSparklineData(productData.map(p => p.totalSales || 0))} height={30} margin={5}>
                   <SparklinesLine color="#667eea" style={{ fill: "none", strokeWidth: 3 }} />
                 </Sparklines>
                 <div className="kpi-change-row">
@@ -760,7 +772,7 @@ function VisualizationPage() {
               <div className="kpi-card">
                 <h3>📈 Total Profit</h3>
                 <p>₹{totalProfit.toLocaleString('en-IN')}</p>
-                <Sparklines data={productData.map(p => p.profit || 0)} height={30} margin={5}>
+                <Sparklines data={safeSparklineData(productData.map(p => p.profit || 0))} height={30} margin={5}>
                   <SparklinesLine color="#f093fb" style={{ fill: "none", strokeWidth: 3 }} />
                 </Sparklines>
                 <div className="kpi-change-row">
@@ -771,7 +783,7 @@ function VisualizationPage() {
               <div className="kpi-card">
                 <h3>📦 Total Units Sold</h3>
                 <p>{totalUnits.toLocaleString('en-IN')}</p>
-                <Sparklines data={productData.map(p => p.quantity || 0)} height={30} margin={5}>
+                <Sparklines data={safeSparklineData(productData.map(p => p.quantity || 0))} height={30} margin={5}>
                   <SparklinesLine color="#4facfe" style={{ fill: "none", strokeWidth: 3 }} />
                 </Sparklines>
                 <div className="kpi-change-row">
@@ -790,21 +802,21 @@ function VisualizationPage() {
               <div className="kpi-card">
                 <h3>🛒 Most Purchased Category</h3>
                 <p>{mostPurchasedCategory || 'N/A'}</p>
-                <Sparklines data={productData.filter(p => p.category === mostPurchasedCategory).map(p => p.quantity || 0)} height={30} margin={5}>
+                <Sparklines data={safeSparklineData(productData.filter(p => p.category === mostPurchasedCategory).map(p => p.quantity || 0))} height={30} margin={5}>
                   <SparklinesLine color="#43e97b" style={{ fill: "none", strokeWidth: 3 }} />
                 </Sparklines>
               </div>
               <div className="kpi-card">
                 <h3>🌍 Top Purchasing Country</h3>
                 <p>{mostPurchasedCountry || 'N/A'}</p>
-                <Sparklines data={productData.filter(p => p.location === mostPurchasedCountry).map(p => p.quantity || 0)} height={30} margin={5}>
+                <Sparklines data={safeSparklineData(productData.filter(p => p.location === mostPurchasedCountry).map(p => p.quantity || 0))} height={30} margin={5}>
                   <SparklinesLine color="#fa709a" style={{ fill: "none", strokeWidth: 3 }} />
                 </Sparklines>
               </div>
               <div className="kpi-card">
                 <h3>⏰ Peak Sales Hours</h3>
                 <p>{peakSalesHour}</p>
-                <Sparklines data={(() => {
+                <Sparklines data={safeSparklineData((() => {
                   // Build array of sales by hour (0-23)
                   const hourSalesArr = Array(24).fill(0);
                   productData.forEach(item => {
@@ -827,7 +839,7 @@ function VisualizationPage() {
                     }
                   });
                   return hourSalesArr;
-                })()} height={30} margin={5}>
+                })())} height={30} margin={5}>
                   <SparklinesLine color="#a8edea" style={{ fill: "none", strokeWidth: 3 }} />
                 </Sparklines>
               </div>

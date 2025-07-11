@@ -1,0 +1,304 @@
+/* InventoryPage.css */
+
+.inventory-container {
+  max-width: 900px;
+  margin: 2rem auto;
+  padding: 24px;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(80, 0, 120, 0.08);
+}
+
+.inventory-title {
+  color: #7c3aed;
+  font-size: 2rem;
+  font-weight: bold;
+  margin-bottom: 1.5rem;
+  text-align: center;
+  margin-top: 0;
+}
+
+.inventory-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 1rem;
+  table-layout: auto;
+}
+
+.inventory-table th {
+  background: #7c3aed;
+  color: #fff;
+  padding: 10px 8px;
+  font-weight: 600;
+  border-top-left-radius: 8px;
+  border-top-right-radius: 8px;
+}
+
+.inventory-table td {
+  padding: 8px;
+  text-align: center;
+  border-bottom: 1px solid #eee;
+}
+
+.inventory-table tr:last-child td {
+  border-bottom: none;
+}
+
+.inventory-edit-btn, .inventory-save-btn {
+  background: #7c3aed;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 16px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background 0.2s;
+}
+
+.inventory-edit-btn:hover, .inventory-save-btn:hover {
+  background: #5b21b6;
+}
+
+.inventory-input {
+  width: 80px;
+  padding: 4px 6px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 1rem;
+}
+
+.inventory-message {
+  color: green;
+  margin-bottom: 12px;
+  text-align: center;
+  font-weight: 500;
+}
+
+/* Form styling */
+.inventory-form {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1.5rem;
+}
+
+.inventory-form select,
+.inventory-form input[type="number"] {
+  padding: 6px 10px;
+  border: 1px solid #bdbdbd;
+  border-radius: 5px;
+  font-size: 1rem;
+  background: #f8f8ff;
+  transition: border 0.2s;
+}
+
+.inventory-form select:focus,
+.inventory-form input[type="number"]:focus {
+  border: 1.5px solid #7c3aed;
+  outline: none;
+}
+
+.inventory-form button {
+  background: #7c3aed;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 7px 18px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s, box-shadow 0.2s;
+  box-shadow: 0 1px 4px rgba(124, 58, 237, 0.08);
+}
+
+.inventory-form button:hover {
+  background: #5b21b6;
+}
+
+/* Reduce button styling */
+.inventory-reduce-btn {
+  background: #f59e42;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 12px;
+  margin-left: 6px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.inventory-reduce-btn:hover {
+  background: #d97706;
+}
+
+/* Responsive table */
+@media (max-width: 700px) {
+  .inventory-container {
+    padding: 8px;
+  }
+  .inventory-table th, .inventory-table td {
+    padding: 4px;
+    font-size: 0.95rem;
+  }
+  .inventory-title {
+    font-size: 1.3rem;
+  }
+} 
+
+:root {
+  --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  --bg-secondary: #fff;
+  --border-color: #e2e8f0;
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --border-radius-xl: 1rem;
+  --transition-normal: all 0.3s ease;
+}
+
+.inventory-main-layout {
+  display: flex;
+  gap: 24px;
+  align-items: flex-start;
+}
+
+.inventory-sidebar {
+  width: 260px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-xl);
+  padding: 1.5rem 1.2rem 1.5rem 1.2rem;
+  box-shadow: var(--shadow-md);
+  height: 100%;
+  min-height: 480px;
+  position: sticky;
+  top: 0;
+  transition: var(--transition-normal);
+  backdrop-filter: blur(10px);
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+}
+
+.inventory-container {
+  flex: 1;
+  min-width: 0;
+  width: 100%;
+  max-width: none;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.inventory-sidebar h3 {
+  color: #7c3aed;
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin: 0 0 1.5rem 0;
+  border-bottom: 2px solid var(--border-color);
+  padding-bottom: 0.75rem;
+}
+
+.inventory-category-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.inventory-category-list li {
+  background: var(--bg-secondary);
+  margin-bottom: 0.5rem;
+  border-radius: 0.75rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #4b5563;
+  padding: 0.6rem 0.8rem;
+  cursor: pointer;
+  border: 1.5px solid transparent;
+  transition: var(--transition-normal);
+  box-shadow: 0 1px 2px rgba(124, 58, 237, 0.04);
+  position: relative;
+  overflow: hidden;
+}
+
+.inventory-category-list li.active,
+.inventory-category-list li:hover {
+  background: var(--primary-gradient);
+  color: #fff;
+  border: 1.5px solid #7c3aed;
+  box-shadow: 0 2px 8px rgba(124, 58, 237, 0.10);
+}
+
+.inventory-category-list li.active::before,
+.inventory-category-list li:hover::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.13), transparent);
+  transition: left 0.5s;
+  z-index: 1;
+}
+
+@media (max-width: 900px) {
+  .inventory-main-layout {
+    flex-direction: column;
+    gap: 0;
+    align-items: initial;
+  }
+  .inventory-sidebar {
+    margin-bottom: 18px;
+    width: 100%;
+    min-width: unset;
+    padding: 16px 8px 16px 12px;
+    position: static;
+    min-height: unset;
+    height: auto;
+  }
+  .inventory-container {
+    min-width: unset;
+    width: 100%;
+  }
+} 
+
+.refresh-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: none;
+  background: var(--primary-gradient, linear-gradient(135deg, #667eea 0%, #764ba2 100%));
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(124, 58, 237, 0.10);
+  transition: background 0.2s, box-shadow 0.2s, transform 0.18s;
+  position: relative;
+  outline: none;
+  padding: 0;
+}
+
+.refresh-btn:hover:not(:disabled) {
+  background: var(--secondary-gradient, linear-gradient(90deg, #f093fb, #f5576c));
+  box-shadow: 0 4px 16px rgba(102, 126, 234, 0.13);
+  transform: scale(1.08) translateY(-2px);
+}
+
+.refresh-btn:active {
+  transform: scale(0.97);
+}
+
+.refresh-btn svg {
+  display: block;
+  pointer-events: none;
+}
+
+.refresh-btn.spinning {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  100% { transform: rotate(360deg); }
+} 
