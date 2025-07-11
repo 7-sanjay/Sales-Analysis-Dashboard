@@ -127,19 +127,78 @@ function FormPage() {
         }
     };
 
+    const categoryOptions = [
+        'Smartphones',
+        'Laptops',
+        'Tablets',
+        'Televisions',
+        'Smartwatches',
+        'Headphones',
+        'Chargers & Cables',
+        'Gaming Consoles',
+        'Camera & Accessories',
+    ];
+
+    const productOptions = {
+        'Smartphones': [
+            'Samsung Galaxy S25 Ultra', 'iPhone 16', 'Redmi Note 15', 'Nothing Phone 3', 'OnePlus 13'
+        ],
+        'Laptops': [
+            'MacBook Pro M3', 'Asus ROG Strix G16', 'Asus VivoBook 16X', 'HP Spectre x360', 'Dell XPS 15'
+        ],
+        'Tablets': [
+            'iPad Pro M4', 'Samsung Galaxy Tab S9', 'Lenovo Tab P12 Pro', 'Xiaomi Pad 6', 'Realme Pad X'
+        ],
+        'Televisions': [
+            'Sony Bravia 4K OLED', 'Samsung QLED 8K', 'LG NanoCell TV', 'Mi Q1 55" QLED', 'TCL 4K Smart TV'
+        ],
+        'Smartwatches': [
+            'Apple Watch Series 10', 'Samsung Galaxy Watch 7', 'Noise ColorFit Ultra 3', 'Fitbit Versa 4', 'Amazfit GTS 5'
+        ],
+        'Headphones': [
+            'Sony WH-1000XM6', 'Bose QuietComfort Ultra', 'JBL Tune 770NC', 'Sennheiser Momentum 4', 'OnePlus Buds Pro 2'
+        ],
+        'Chargers & Cables': [
+            'Anker 65W GaN Charger', 'Apple MagSafe Charger', 'Samsung 45W Super Fast Charger', 'UGREEN USB-C to Lightning Cable', 'boAt 100W Type-C Cable'
+        ],
+        'Gaming Consoles': [
+            'PlayStation 5', 'Xbox Series X', 'Nintendo Switch OLED', 'Logitech G Cloud', 'Steam Deck'
+        ],
+        'Camera & Accessories': [
+            'Canon EOS R7 Mirrorless', 'Sony Alpha ZV-E10', 'Nikon Z6 II', 'GoPro Hero 12', 'DJI OM 6 Gimbal'
+        ],
+    };
+
     return (
         <div className="form-outer-wrapper">
             <div className="form-container">
                 <h2 className="form-title">{isEditing ? "Edit Product Data" : "Add Product Data"}</h2>
                 <form onSubmit={handleSubmit}>
-                    <input
+                    <select
+                        className="form-input"
+                        name="category"
+                        value={formData.category}
+                        onChange={handleChange}
+                        required
+                    >
+                        <option value="">Select Category</option>
+                        {categoryOptions.map((cat) => (
+                            <option key={cat} value={cat}>{cat}</option>
+                        ))}
+                    </select>
+                    <select
                         className="form-input"
                         name="productName"
-                        placeholder="Product Name"
-                        onChange={handleChange}
                         value={formData.productName}
+                        onChange={handleChange}
                         required
-                    />
+                        disabled={!formData.category}
+                    >
+                        <option value="">{formData.category ? 'Select Product Name' : 'Select Category First'}</option>
+                        {formData.category && productOptions[formData.category].map((prod) => (
+                            <option key={prod} value={prod}>{prod}</option>
+                        ))}
+                    </select>
                     <div className="form-input" style={{ textAlign: 'left', color: '#555', background: '#f5f7fa', fontWeight: 500, marginBottom: '0.5rem', border: '1px solid #eee', borderRadius: '8px' }}>
                         Date & Time: {formData.time ? new Date(formData.time).toLocaleString(undefined, { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : ''}
                     </div>
@@ -187,14 +246,6 @@ function FormPage() {
                         value={formData.totalProfit}
                         placeholder="Total Profit"
                         disabled
-                    />
-                    <input
-                        className="form-input"
-                        name="category"
-                        placeholder="Category"
-                        onChange={handleChange}
-                        value={formData.category}
-                        required
                     />
                     <select
                         className="form-input"
