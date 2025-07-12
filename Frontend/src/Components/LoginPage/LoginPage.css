@@ -39,13 +39,28 @@
   }
   
   .toggle-button {
-    color: #2575fc;
-    transition: color 0.3s;
+    color: #fff !important;
   }
   
   .toggle-button:hover {
-    color: #6a11cb;
-    text-decoration: none;
+    color: #fff !important;
+    text-decoration: underline;
+  }
+  
+  .toggle-link-text {
+    color: #fff;
+    background: none;
+    border: none;
+    padding: 0;
+    margin: 0;
+    font-size: 1rem;
+    text-decoration: underline;
+    transition: color 0.2s;
+  }
+
+  .toggle-link-text:hover {
+    color: #e0e0e0;
+    text-decoration: underline;
   }
   
   .dashboard-heading {

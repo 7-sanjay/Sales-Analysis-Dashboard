@@ -225,6 +225,8 @@ function VisualizationPage() {
   useEffect(() => {
     if (location.state && location.state.section) {
       setActiveSection(location.state.section);
+    } else if (location.state && location.state.fromHomeNav) {
+      setActiveSection('home');
     }
   }, [location.state]);
 

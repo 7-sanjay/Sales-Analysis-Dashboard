@@ -73,9 +73,11 @@ function LoginRegister() {
           </button>
           {error && <p className="text-danger text-center mt-3">{error}</p>}
         </form>
-        <button onClick={() => setIsRegistering(!isRegistering)} className="btn btn-link toggle-button mt-3 w-100">
-          {isRegistering ? 'Already have an account? Login' : 'Need an account? Register'}
-        </button>
+        <div className="toggle-link mt-3 w-100 text-center">
+          <span onClick={() => setIsRegistering(!isRegistering)} className="toggle-link-text" style={{cursor: 'pointer'}}>
+            {isRegistering ? 'Already have an account? Login' : 'Need an account? Register'}
+          </span>
+        </div>
       </div>
     </div>
   );

@@ -44,7 +44,7 @@ function TableView() {
         </CSVLink>
         <button
           className="btn btn-secondary"
-          onClick={() => navigate('/visualization', { state: { data } })}
+          onClick={() => navigate('/visualization', { state: { data, fromHomeNav: true } })}
         >
           View Visualizations
         </button>
@@ -55,7 +55,11 @@ function TableView() {
           Inventory Management
         </button>
         <button className="btn btn-login" onClick={() => navigate('/')}>Home/Login</button>
-        <button className="btn btn-danger" onClick={deleteAllData}>
+        <button className="btn btn-danger" onClick={async () => {
+          if (window.confirm('Are you sure you want to delete all data? This action cannot be undone.')) {
+            await deleteAllData();
+          }
+        }}>
           Delete All
         </button>
       </div>
