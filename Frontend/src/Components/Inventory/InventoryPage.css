@@ -132,6 +132,60 @@
   background: #d97706;
 }
 
+/* Stock level color highlighting */
+.low-stock {
+  background-color: #fef2f2 !important;
+  border-left: 4px solid #ef4444 !important;
+}
+
+.low-stock:hover {
+  background-color: #fee2e2 !important;
+}
+
+.medium-stock {
+  background-color: #fffbeb !important;
+  border-left: 4px solid #f59e0b !important;
+}
+
+.medium-stock:hover {
+  background-color: #fef3c7 !important;
+}
+
+.high-stock {
+  background-color: #f0fdf4 !important;
+  border-left: 4px solid #22c55e !important;
+}
+
+.high-stock:hover {
+  background-color: #dcfce7 !important;
+}
+
+.stock-cell {
+  font-weight: 600;
+  position: relative;
+}
+
+.stock-display {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  font-weight: 600;
+}
+
+/* Stock level indicators */
+.low-stock .stock-display {
+  color: #dc2626;
+}
+
+.medium-stock .stock-display {
+  color: #d97706;
+}
+
+.high-stock .stock-display {
+  color: #16a34a;
+}
+
 /* Responsive table */
 @media (max-width: 700px) {
   .inventory-container {

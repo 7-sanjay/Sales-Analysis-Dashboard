@@ -149,17 +149,12 @@ const topCategory = Object.keys(analytics.categoryAnalysis)[0];
 
 ## Testing
 
-### Run Test Data
-```bash
-cd Backend
-node test-data.js
-```
+The enhanced insights functionality can be tested by:
 
-### Test Insights Functionality
-```bash
-cd Frontend
-node test-insights.js
-```
+1. **Adding real data** through the form interface
+2. **Viewing visualizations** in the dashboard
+3. **Checking insights** that appear when hovering over charts
+4. **Verifying analytics** through the `/api/analytics` endpoint
 
 ## Requirements
 

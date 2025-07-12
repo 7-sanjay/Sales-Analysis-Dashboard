@@ -22,15 +22,12 @@ const productOptions = {
 
 function InventoryPage() {
     const [inventory, setInventory] = useState([]);
-    const [selectedCategory, setSelectedCategory] = useState('');
-    const [selectedProduct, setSelectedProduct] = useState('');
-    const [stock, setStock] = useState('');
     const [message, setMessage] = useState('');
     const [editRow, setEditRow] = useState(null);
     const [editValues, setEditValues] = useState({ price: 0, netPrice: 0, stock: 0 });
     const [reduceQtyMap, setReduceQtyMap] = useState({});
     const [filterCategory, setFilterCategory] = useState('');
-    const [refreshing, setRefreshing] = useState(false); // NEW
+    const [refreshing, setRefreshing] = useState(false);
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -38,7 +35,7 @@ function InventoryPage() {
     }, []);
 
     const fetchInventory = async () => {
-        setRefreshing(true); // NEW
+        setRefreshing(true);
         try {
             const res = await fetch('/api/inventory');
             const data = await res.json();
@@ -46,35 +43,7 @@ function InventoryPage() {
         } catch (err) {
             console.error('Error fetching inventory:', err);
         } finally {
-            setRefreshing(false); // NEW
-        }
-    };
-
-    const handleAddOrUpdate = async (e) => {
-        e.preventDefault();
-        if (!selectedProduct || !selectedCategory || isNaN(stock) || Number(stock) < 0) {
-            alert('Please fill in valid category, product, and stock.');
-            return;
-        }
-        const res = await fetch('/api/inventory', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                productName: selectedProduct,
-                category: selectedCategory,
-                stock: Number(stock)
-            })
-        });
-        const data = await res.json();
-        if (res.ok) {
-            setMessage('Inventory updated!');
-            alert('Inventory updated!');
-            fetchInventory();
-            setSelectedProduct('');
-            setSelectedCategory('');
-            setStock('');
-        } else {
-            alert(data.message || 'Error updating inventory');
+            setRefreshing(false);
         }
     };
 
@@ -138,8 +107,6 @@ function InventoryPage() {
             alert('Network error while saving inventory.');
         }
     };
-
-    const filteredProducts = selectedCategory ? productOptions[selectedCategory] : [];
 
     // Merge master list and DB inventory
     const inventoryMap = {};
@@ -253,6 +220,22 @@ function InventoryPage() {
 
 // Table as a separate component
 function InventoryTable({ displayRows, editRow, editValues, handleEditChange, handleEdit, handleSave, reduceQtyMap, setReduceQtyMap, handleReduceStock }) {
+    // Function to determine stock level color
+    const getStockLevelColor = (stock) => {
+        const stockNum = Number(stock);
+        if (stockNum <= 7) return 'low-stock';       // Red - Low stock
+        if (stockNum <= 20) return 'medium-stock';   // Yellow - Medium stock
+        return 'high-stock';                          // Green - Surplus stock
+    };
+
+    // Function to get stock level indicator
+    const getStockLevelIndicator = (stock) => {
+        const stockNum = Number(stock);
+        if (stockNum <= 7) return '🔴';       // Red circle
+        if (stockNum <= 20) return '🟡';      // Yellow circle
+        return '🟢';                          // Green circle
+    };
+
     return (
         <table className="inventory-table">
             <thead>
@@ -270,8 +253,11 @@ function InventoryTable({ displayRows, editRow, editValues, handleEditChange, ha
                 {displayRows.map(item => {
                     const key = item.category + '|' + item.productName;
                     const isEditing = editRow === key;
+                    const stockLevelClass = getStockLevelColor(item.stock);
+                    const stockIndicator = getStockLevelIndicator(item.stock);
+                    
                     return (
-                        <tr key={key}>
+                        <tr key={key} className={stockLevelClass}>
                             <td>{item.category}</td>
                             <td>{item.productName}</td>
                             <td>
@@ -284,10 +270,14 @@ function InventoryTable({ displayRows, editRow, editValues, handleEditChange, ha
                                     <input type="number" name="netPrice" value={editValues.netPrice} onChange={handleEditChange} className="inventory-input" />
                                 ) : item.netPrice}
                             </td>
-                            <td>
+                            <td className={`stock-cell ${stockLevelClass}`}>
                                 {isEditing ? (
                                     <input type="number" name="stock" value={editValues.stock} onChange={handleEditChange} className="inventory-input" />
-                                ) : item.stock}
+                                ) : (
+                                    <span className="stock-display">
+                                        {stockIndicator} {item.stock}
+                                    </span>
+                                )}
                             </td>
                             <td>
                                 {!isEditing && (
