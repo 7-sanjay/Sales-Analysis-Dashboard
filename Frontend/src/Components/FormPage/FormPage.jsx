@@ -4,6 +4,7 @@ import axios from 'axios';
 import './FormPage.css';
 
 function FormPage() {
+    const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || '';
     const navigate = useNavigate();
     const location = useLocation();
 
@@ -34,7 +35,6 @@ function FormPage() {
     useEffect(() => {
         async function fetchInventory() {
             setLoadingInventory(true);
-            const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || '';
             try {
                 const res = await fetch(`${API_BASE_URL}/api/inventory`);
                 const data = await res.json();
@@ -226,7 +226,6 @@ function FormPage() {
     const addData = async (formData) => {
         try {
             console.log('Sending data to backend:', formData);
-            const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || '';
             const response = await axios.post(`${API_BASE_URL}/api/products`, formData);
             if (response.status === 201) {
                 const newProduct = response.data;
@@ -256,7 +255,6 @@ function FormPage() {
             console.log('Product ID:', updatedFormData._id);
             console.log('Location being updated to:', updatedFormData.location);
             
-            const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || '';
             const response = await axios.put(`${API_BASE_URL}/api/products/${updatedFormData._id}`, updatedFormData);
             if (response.status === 200) {
                 const updatedProduct = response.data;
