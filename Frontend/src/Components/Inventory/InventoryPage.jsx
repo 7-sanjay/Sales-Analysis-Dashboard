@@ -34,10 +34,12 @@ function InventoryPage() {
         fetchInventory();
     }, []);
 
+    const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || '';
+    
     const fetchInventory = async () => {
         setRefreshing(true);
         try {
-            const res = await fetch('/api/inventory');
+            const res = await fetch(`${API_BASE_URL}/api/inventory`);
             const data = await res.json();
             setInventory(data);
         } catch (err) {
@@ -55,7 +57,7 @@ function InventoryPage() {
             return;
         }
         if (!window.confirm(`Reduce stock of ${productName} by ${qty}?`)) return;
-        const res = await fetch('/api/inventory/reduce', {
+        const res = await fetch(`${API_BASE_URL}/api/inventory/reduce`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ productName, category, quantity: Number(qty) })
@@ -82,7 +84,7 @@ function InventoryPage() {
     const handleSave = async (row) => {
         if (!window.confirm(`Save changes to ${row.productName}?`)) return;
         try {
-            const res = await fetch('/api/inventory', {
+            const res = await fetch(`${API_BASE_URL}/api/inventory`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
