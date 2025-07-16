@@ -6,6 +6,7 @@ const cors = require('cors');
 const morgan = require('morgan');
 const Product = require('./models/Product');
 const Inventory = require('./models/Inventory');
+const { GoogleGenerativeAI } = require('@google/generative-ai');
 
 // Create Express app
 const app = express();
@@ -17,10 +18,7 @@ app.use(morgan('dev'));
 
 // MongoDB Connection 
 console.log('Connecting to:', process.env.MONGODB_URI);
-mongoose.connect(process.env.MONGODB_URI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true
-})
+mongoose.connect(process.env.MONGODB_URI)
 .then(() => console.log('Connected to MongoDB Atlas'))
 .catch(err => console.error('MongoDB connection error:', err));
 
@@ -36,6 +34,10 @@ const saleSchema = new mongoose.Schema({
 });
 
 const Sale = mongoose.model('Sale', saleSchema);
+
+// Initialize Gemini
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
 // --- Product Routes ---
 app.post('/api/products', async (req, res) => {
@@ -330,6 +332,25 @@ app.post('/api/inventory/reduce', async (req, res) => {
     res.status(200).json(inventory);
   } catch (err) {
     res.status(500).json({ message: 'Error reducing inventory', error: err.message });
+  }
+});
+
+// API endpoint to generate insights
+app.post("/api/generate-insight", async (req, res) => {
+  try {
+    const { chartData } = req.body; // Get data from frontend
+
+    // Craft a specific prompt for the AI
+    const prompt = `You are a data analyst. Based on the following time-series data for sales and quantity, generate a concise insight in about 50 words. Data: ${JSON.stringify(chartData)}`;
+
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const insightText = response.text();
+
+    res.json({ insight: insightText });
+  } catch (error) {
+    console.error("Error generating insight:", error);
+    res.status(500).json({ error: "Failed to generate insight." });
   }
 });
 

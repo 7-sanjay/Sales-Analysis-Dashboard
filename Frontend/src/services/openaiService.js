@@ -1,11 +1,7 @@
-const OPENAI_API_KEY = process.env.REACT_APP_OPENAI_API_KEY;
-const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL;
-
 // Function to fetch analytics data from backend
 export const fetchAnalyticsData = async () => {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/analytics`);
+    const response = await fetch(`/api/analytics`);
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
@@ -16,260 +12,25 @@ export const fetchAnalyticsData = async () => {
   }
 };
 
-export const generateChartInsight = async (chartData, chartType, chartTitle, productData = []) => {
+export const generateChartInsight = async (chartData) => {
   try {
-    if (!OPENAI_API_KEY) {
-      console.warn('OpenAI API key not found. Please set REACT_APP_OPENAI_API_KEY in your environment variables.');
-      return null;
-    }
-
-    // Validate input data
-    if (!chartData || !chartType || !chartTitle) {
-      console.warn('Invalid chart data provided for insight generation');
-      return null;
-    }
-
-    // Chart context: describe what the chart is about
-    let chartContext = '';
-    if (chartType && chartTitle) {
-      if (chartType === 'Bar' && chartTitle.toLowerCase().includes('category')) {
-        chartContext = 'This chart shows the distribution of values by product category.';
-      } else if (chartType === 'Bar' && chartTitle.toLowerCase().includes('product')) {
-        chartContext = 'This chart shows the distribution of values by product.';
-      } else if (chartType === 'Pie' || chartType === 'Doughnut') {
-        chartContext = 'This chart shows the proportion of each category or location.';
-      } else if (chartType === 'Radar') {
-        chartContext = 'This radar chart compares multiple categories or metrics.';
-      } else if (chartType === 'Line') {
-        chartContext = 'This chart shows trends over time.';
-      } else {
-        chartContext = `This chart visualizes: ${chartTitle}`;
-      }
-    }
-
-    // Fetch additional analytics data from backend
-    const analyticsData = await fetchAnalyticsData();
-    
-    // Prepare comprehensive data analysis for insights
-    const dataAnalysis = prepareDataAnalysis(productData, chartData, chartType, chartTitle, analyticsData);
-
-    const prompt = `Analyze this business data and provide a detailed, numerical insight about the visualization.\n\nChart Context: ${chartContext}\n\nChart Information:\n- Type: ${chartType}\n- Title: ${chartTitle}\n- Chart Data: ${JSON.stringify(chartData, null, 2)}\n\nDatabase Analysis:\n${JSON.stringify(dataAnalysis, null, 2)}\n\nPlease provide a comprehensive, data-driven insight (minimum 30 words) that:\n1. References specific numerical values from the actual data (prices, quantities, profits, percentages)\n2. Identifies key trends or patterns with exact numbers\n3. Provides actionable business intelligence with concrete metrics\n4. Uses real product names, categories, or locations when relevant\n5. Includes percentage changes, averages, or other statistical measures\n6. Compares different categories, locations, or time periods with specific numbers\n7. Mentions specific revenue, profit, and quantity figures from the database\n\nFocus on what the data reveals about business performance, opportunities, or areas for improvement. Always include specific numerical analysis and ensure the insight is at least 30 words long and directly related to the chart context.`;
-
-    // Create AbortController for timeout
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 15000);
-
-    const response = await fetch(OPENAI_API_URL, {
+    // Send chartData to backend Gemini endpoint
+    const response = await fetch('/api/generate-insight', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${OPENAI_API_KEY}`
       },
-      body: JSON.stringify({
-        model: 'gpt-3.5-turbo',
-        messages: [
-          {
-            role: 'system',
-            content: 'You are a senior data analyst providing detailed, numerical insights about business charts and visualizations. Always reference actual data values with specific numbers, percentages, and metrics. Provide comprehensive analysis with at least 30 words that includes concrete business intelligence based on real product information.'
-          },
-          {
-            role: 'user',
-            content: prompt
-          }
-        ],
-        max_tokens: 300,
-        temperature: 0.7
-      }),
-      signal: controller.signal
+      body: JSON.stringify({ chartData }),
     });
-
-    clearTimeout(timeoutId);
-
     if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`OpenAI API error: ${response.status} - ${errorText}`);
+      throw new Error(`Gemini API error: ${response.status}`);
     }
-
     const result = await response.json();
-    
-    // Validate response structure
-    if (!result.choices || !result.choices[0] || !result.choices[0].message) {
-      throw new Error('Invalid response structure from OpenAI API');
-    }
-
-    return result.choices[0].message.content?.trim() || null;
-
+    return result.insight || null;
   } catch (error) {
-    if (error.name === 'AbortError') {
-      console.error('OpenAI API request timed out');
-    } else {
-      console.error('Error generating chart insight:', error);
-    }
+    console.error('Error generating chart insight:', error);
     return null;
   }
-};
-
-// Helper function to prepare comprehensive data analysis
-const prepareDataAnalysis = (productData, chartData, chartType, chartTitle, analyticsData = null) => {
-  if (!productData || productData.length === 0) {
-    return { message: 'No product data available for analysis' };
-  }
-
-  // Use analytics data from backend if available, otherwise calculate locally
-  const analysis = analyticsData ? {
-    ...analyticsData,
-    // Add chart-specific data
-    chartData: {
-      labels: chartData.labels || [],
-      values: chartData.values || [],
-      datasets: chartData.datasets || []
-    }
-  } : {
-    totalProducts: productData.length,
-    totalRevenue: productData.reduce((sum, p) => sum + (p.totalSales || 0), 0),
-    totalProfit: productData.reduce((sum, p) => sum + (p.profit || 0), 0),
-    totalUnits: productData.reduce((sum, p) => sum + (p.quantity || 0), 0),
-    averagePrice: productData.reduce((sum, p) => sum + (p.price || 0), 0) / productData.length,
-    averageProfit: productData.reduce((sum, p) => sum + (p.profit || 0), 0) / productData.length,
-    averageQuantity: productData.reduce((sum, p) => sum + (p.quantity || 0), 0) / productData.length,
-    categories: [...new Set(productData.map(p => p.category))],
-    locations: [...new Set(productData.map(p => p.location))],
-    products: productData.map(p => p.productName),
-    dateRange: {
-      earliest: new Date(Math.min(...productData.map(p => new Date(p.time || p.createdAt)))),
-      latest: new Date(Math.max(...productData.map(p => new Date(p.time || p.createdAt))))
-    }
-  };
-
-  // Calculate profit margins if not provided by analytics
-  if (!analyticsData) {
-    analysis.profitMargin = analysis.totalRevenue > 0 ? (analysis.totalProfit / analysis.totalRevenue) * 100 : 0;
-    analysis.averageProfitMargin = productData.reduce((sum, p) => {
-      const margin = p.totalSales > 0 ? (p.profit / p.totalSales) * 100 : 0;
-      return sum + margin;
-    }, 0) / productData.length;
-
-    // Add category-specific analysis
-    analysis.categoryAnalysis = {};
-    analysis.categories.forEach(category => {
-      const categoryProducts = productData.filter(p => p.category === category);
-      const categoryRevenue = categoryProducts.reduce((sum, p) => sum + (p.totalSales || 0), 0);
-      const categoryProfit = categoryProducts.reduce((sum, p) => sum + (p.profit || 0), 0);
-      const categoryUnits = categoryProducts.reduce((sum, p) => sum + (p.quantity || 0), 0);
-      
-      analysis.categoryAnalysis[category] = {
-        count: categoryProducts.length,
-        totalRevenue: categoryRevenue,
-        totalProfit: categoryProfit,
-        totalUnits: categoryUnits,
-        averagePrice: categoryProducts.reduce((sum, p) => sum + (p.price || 0), 0) / categoryProducts.length,
-        averageProfit: categoryProfit / categoryProducts.length,
-        averageQuantity: categoryUnits / categoryProducts.length,
-        profitMargin: categoryRevenue > 0 ? (categoryProfit / categoryRevenue) * 100 : 0,
-        revenueShare: (categoryRevenue / analysis.totalRevenue) * 100,
-        profitShare: (categoryProfit / analysis.totalProfit) * 100,
-        products: categoryProducts.map(p => p.productName)
-      };
-    });
-
-    // Add location-specific analysis
-    analysis.locationAnalysis = {};
-    analysis.locations.forEach(location => {
-      const locationProducts = productData.filter(p => p.location === location);
-      const locationRevenue = locationProducts.reduce((sum, p) => sum + (p.totalSales || 0), 0);
-      const locationProfit = locationProducts.reduce((sum, p) => sum + (p.profit || 0), 0);
-      const locationUnits = locationProducts.reduce((sum, p) => sum + (p.quantity || 0), 0);
-      
-      analysis.locationAnalysis[location] = {
-        count: locationProducts.length,
-        totalRevenue: locationRevenue,
-        totalProfit: locationProfit,
-        totalUnits: locationUnits,
-        averagePrice: locationProducts.reduce((sum, p) => sum + (p.price || 0), 0) / locationProducts.length,
-        averageProfit: locationProfit / locationProducts.length,
-        averageQuantity: locationUnits / locationProducts.length,
-        profitMargin: locationRevenue > 0 ? (locationProfit / locationRevenue) * 100 : 0,
-        revenueShare: (locationRevenue / analysis.totalRevenue) * 100,
-        profitShare: (locationProfit / analysis.totalProfit) * 100
-      };
-    });
-
-    // Add top performers with detailed metrics
-    analysis.topPerformers = {
-      bestSellingProduct: productData.reduce((best, current) => 
-        (current.totalSales > best.totalSales) ? current : best, { totalSales: 0, productName: 'N/A' }),
-      mostProfitableProduct: productData.reduce((best, current) => 
-        (current.profit > best.profit) ? current : best, { profit: 0, productName: 'N/A' }),
-      highestPricedProduct: productData.reduce((best, current) => 
-        (current.price > best.price) ? current : best, { price: 0, productName: 'N/A' }),
-      mostSoldProduct: productData.reduce((best, current) => 
-        (current.quantity > best.quantity) ? current : best, { quantity: 0, productName: 'N/A' }),
-      bestProfitMarginProduct: productData.reduce((best, current) => {
-        const margin = current.totalSales > 0 ? (current.profit / current.totalSales) * 100 : 0;
-        const bestMargin = best.totalSales > 0 ? (best.profit / best.totalSales) * 100 : 0;
-        return margin > bestMargin ? current : best;
-      }, { totalSales: 0, profit: 0, productName: 'N/A' })
-    };
-
-    // Add time-based analysis
-    analysis.timeAnalysis = {
-      hourlySales: Array(24).fill(0),
-      dailySales: {},
-      monthlySales: {}
-    };
-
-    productData.forEach(product => {
-      if (product.time) {
-        const date = new Date(product.time);
-        if (!isNaN(date)) {
-          const hour = date.getHours();
-          const day = date.toDateString();
-          const month = date.toLocaleDateString('en-US', { year: 'numeric', month: 'long' });
-          
-          analysis.timeAnalysis.hourlySales[hour] += (product.totalSales || 0);
-          analysis.timeAnalysis.dailySales[day] = (analysis.timeAnalysis.dailySales[day] || 0) + (product.totalSales || 0);
-          analysis.timeAnalysis.monthlySales[month] = (analysis.timeAnalysis.monthlySales[month] || 0) + (product.totalSales || 0);
-        }
-      }
-    });
-
-    // Find peak performance times
-    analysis.peakPerformance = {
-      peakHour: analysis.timeAnalysis.hourlySales.indexOf(Math.max(...analysis.timeAnalysis.hourlySales)),
-      peakDay: Object.keys(analysis.timeAnalysis.dailySales).reduce((a, b) => 
-        analysis.timeAnalysis.dailySales[a] > analysis.timeAnalysis.dailySales[b] ? a : b, ''),
-      peakMonth: Object.keys(analysis.timeAnalysis.monthlySales).reduce((a, b) => 
-        analysis.timeAnalysis.monthlySales[a] > analysis.timeAnalysis.monthlySales[b] ? a : b, '')
-    };
-
-    // Add statistical measures
-    analysis.statistics = {
-      priceRange: {
-        min: Math.min(...productData.map(p => p.price || 0)),
-        max: Math.max(...productData.map(p => p.price || 0)),
-        median: productData.map(p => p.price || 0).sort((a, b) => a - b)[Math.floor(productData.length / 2)]
-      },
-      profitRange: {
-        min: Math.min(...productData.map(p => p.profit || 0)),
-        max: Math.max(...productData.map(p => p.profit || 0)),
-        median: productData.map(p => p.profit || 0).sort((a, b) => a - b)[Math.floor(productData.length / 2)]
-      },
-      quantityRange: {
-        min: Math.min(...productData.map(p => p.quantity || 0)),
-        max: Math.max(...productData.map(p => p.quantity || 0)),
-        median: productData.map(p => p.quantity || 0).sort((a, b) => a - b)[Math.floor(productData.length / 2)]
-      }
-    };
-  }
-
-  // Add chart-specific data
-  analysis.chartData = {
-    labels: chartData.labels || [],
-    values: chartData.values || [],
-    datasets: chartData.datasets || []
-  };
-
-  return analysis;
 };
 
 // Fallback insights for when OpenAI API is not available

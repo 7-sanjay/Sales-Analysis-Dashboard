@@ -80,7 +80,7 @@ const AIButton = ({ onClick, isLoading, isActive }) => (
     {isLoading ? (
       <span className="loading-spinner" style={{ width: 18, height: 18, borderWidth: 2 }} />
     ) : (
-      <span role="img" aria-label="AI">🤖</span>
+      <img src={isActive ? "/gemini1.png" : "/gemini.png"} alt="Gemini AI" style={{ width: 20, height: 20, objectFit: 'contain' }} />
     )}
   </button>
 );
@@ -101,6 +101,7 @@ function VisualizationPage() {
   const [insightLoading, setInsightLoading] = useState(false);
   const [activeInsight, setActiveInsight] = useState(null);
   const [monthlyTrendMetric, setMonthlyTrendMetric] = useState('revenue');
+  const [top5View, setTop5View] = useState('products'); // 'products' or 'categories'
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -242,72 +243,21 @@ function VisualizationPage() {
 
   // Chart hover handler for insights
   const handleChartHover = async (chartTitle, chartType, chartData) => {
-    console.log('Chart hover triggered:', chartTitle, chartType);
-    console.log('Product data length:', productData.length);
-    console.log('Chart data received:', chartData);
-    
     setHoveredChart(chartTitle);
-    
-    // If we already have an insight for this chart, show it immediately
-    if (chartInsights[chartTitle]) {
-      console.log('Using cached insight for:', chartTitle);
-      return;
-    }
-
-    // If already loading for this chart, don't start another request
-    if (insightLoading) {
-      console.log('Already loading insight, skipping request');
-      return;
-    }
-
-    // Show loading state
-    console.log('Starting insight generation for:', chartTitle);
+    if (chartInsights[chartTitle]) return;
+    if (insightLoading) return;
     setInsightLoading(true);
-
     try {
-      // Check if we have valid chart data
       if (!chartData || !chartData.labels || chartData.labels.length === 0) {
-        console.log('No valid chart data, using fallback insight');
-        const fallbackInsight = getFallbackInsight(chartType, chartTitle, productData);
-        setChartInsights(prev => ({
-          ...prev,
-          [chartTitle]: fallbackInsight
-        }));
+        setChartInsights(prev => ({ ...prev, [chartTitle]: 'No valid chart data for insight.' }));
         return;
       }
-      
-      // Try to generate insight from OpenAI with product data
-      const insight = await generateChartInsight(chartData, chartType, chartTitle, productData);
-      
-      console.log('Insight result for', chartTitle, ':', insight ? 'OpenAI insight' : 'Using fallback');
-      
-      // Always set the insight for this chart (no need to check hoveredChart again)
-      if (insight) {
-        setChartInsights(prev => ({
-          ...prev,
-          [chartTitle]: insight
-        }));
-      } else {
-        // Use fallback insight if OpenAI fails
-        const fallbackInsight = getFallbackInsight(chartType, chartTitle, productData);
-        console.log('Using fallback insight for', chartTitle, ':', fallbackInsight);
-        setChartInsights(prev => ({
-          ...prev,
-          [chartTitle]: fallbackInsight
-        }));
-      }
+      const insight = await generateChartInsight(chartData);
+      setChartInsights(prev => ({ ...prev, [chartTitle]: insight || 'Could not generate insight.' }));
     } catch (error) {
-      console.error('Error generating insight:', error);
-      // Use fallback insight on error
-      const fallbackInsight = getFallbackInsight(chartType, chartTitle, productData);
-      console.log('Using fallback insight due to error for', chartTitle, ':', fallbackInsight);
-      setChartInsights(prev => ({
-        ...prev,
-        [chartTitle]: fallbackInsight
-      }));
+      setChartInsights(prev => ({ ...prev, [chartTitle]: 'Could not generate insight.' }));
     } finally {
       setInsightLoading(false);
-      console.log('Insight generation completed for:', chartTitle);
     }
   };
 
@@ -649,14 +599,13 @@ function VisualizationPage() {
       return;
     }
     setActiveInsight(chartTitle);
-    // If already loaded, do nothing
     if (chartInsights[chartTitle]) return;
     setInsightLoading(true);
     try {
-      const insight = await generateChartInsight(chartData, chartType, chartTitle, productData);
-      setChartInsights(prev => ({ ...prev, [chartTitle]: insight || getFallbackInsight(chartType, chartTitle, productData) }));
+      const insight = await generateChartInsight(chartData);
+      setChartInsights(prev => ({ ...prev, [chartTitle]: insight || 'Could not generate insight.' }));
     } catch (e) {
-      setChartInsights(prev => ({ ...prev, [chartTitle]: getFallbackInsight(chartType, chartTitle, productData) }));
+      setChartInsights(prev => ({ ...prev, [chartTitle]: 'Could not generate insight.' }));
     } finally {
       setInsightLoading(false);
     }
@@ -687,6 +636,17 @@ function VisualizationPage() {
     const sortedMonths = Object.keys(monthly).sort((a, b) => new Date(a) - new Date(b));
     return { labels: sortedMonths, values: sortedMonths.map(m => monthly[m]) };
   }
+
+  const topCategories = (() => {
+    const categorySales = {};
+    productData.forEach(p => {
+      if (p.category) categorySales[p.category] = (categorySales[p.category] || 0) + (p.totalSales || 0);
+    });
+    return Object.entries(categorySales)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([category, totalSales]) => ({ category, totalSales }));
+  })();
 
   if (isLoading) {
     return (
@@ -1618,24 +1578,51 @@ function VisualizationPage() {
                   </div>
                   {/* Top 5 Best-Selling Products */}
                   <div className="chart chart-with-insight" style={{ position: 'relative' }}>
-                    <AIButton
-                      onClick={() => handleInsightButton(
-                        'Top 5 Best-Selling Products',
-                        'Bar',
-                        prepareChartDataForAPI({
-                          labels: topProducts.map(p => p.productName || 'Unknown'),
-                          values: topProducts.map(p => p.totalSales)
-                        })
-                      )}
-                      isLoading={insightLoading && activeInsight === 'Top 5 Best-Selling Products'}
-                      isActive={activeInsight === 'Top 5 Best-Selling Products'}
-                    />
-                    <h4>🏆 Top 5 Best-Selling Products</h4>
+                    <div style={{ display: 'flex', alignItems: 'center', marginBottom: 12, justifyContent: 'space-between' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <AIButton
+                          onClick={() => handleInsightButton(
+                            top5View === 'products' ? 'Top 5 Best-Selling Products' : 'Top 5 Best-Selling Categories',
+                            'Bar',
+                            prepareChartDataForAPI({
+                              labels: top5View === 'products' ? topProducts.map(p => p.productName || 'Unknown') : topCategories.map(c => c.category),
+                              values: top5View === 'products' ? topProducts.map(p => p.totalSales) : topCategories.map(c => c.totalSales)
+                            })
+                          )}
+                          isLoading={insightLoading && activeInsight === (top5View === 'products' ? 'Top 5 Best-Selling Products' : 'Top 5 Best-Selling Categories')}
+                          isActive={activeInsight === (top5View === 'products' ? 'Top 5 Best-Selling Products' : 'Top 5 Best-Selling Categories')}
+                        />
+                        <h4 style={{ margin: 0, marginRight: 12, fontWeight: 600, fontSize: '1.08rem', display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <span role="img" aria-label="Top 5">🏆</span> Top 5
+                        </h4>
+                        <select
+                          value={top5View}
+                          onChange={e => setTop5View(e.target.value)}
+                          style={{
+                            padding: '0.3rem 0.7rem',
+                            borderRadius: 6,
+                            fontSize: '1rem',
+                            fontWeight: 500,
+                            background: '#fff',
+                            border: '1.2px solid #e2e8f0',
+                            color: '#333',
+                            outline: 'none',
+                            marginLeft: 'auto',
+                            minWidth: 100,
+                            alignSelf: 'center',
+                            marginTop: '-2px'
+                          }}
+                        >
+                          <option value="products">Product</option>
+                          <option value="categories">Category</option>
+                        </select>
+                      </div>
+                    </div>
                     <Bar data={{
-                      labels: topProducts.map(p => p.productName || 'Unknown'),
+                      labels: top5View === 'products' ? topProducts.map(p => p.productName || 'Unknown') : topCategories.map(c => c.category),
                       datasets: [{
-                        label: 'Sales ₹',
-                        data: safeChartData(topProducts.map(p => p.totalSales)),
+                        label: top5View === 'products' ? 'Sales ₹' : 'Category Sales ₹',
+                        data: top5View === 'products' ? topProducts.map(p => p.totalSales) : topCategories.map(c => c.totalSales),
                         backgroundColor: modernColorPalette.slice(0, 5),
                         borderColor: modernColorPalette.slice(0, 5).map(color => color.replace('0.8', '1')),
                         borderWidth: 2,
@@ -1643,12 +1630,12 @@ function VisualizationPage() {
                         borderSkipped: false
                       }]
                     }} options={chartOptions} />
-                    {activeInsight === 'Top 5 Best-Selling Products' && (
+                    {activeInsight === (top5View === 'products' ? 'Top 5 Best-Selling Products' : 'Top 5 Best-Selling Categories') && (
                       <InsightTooltip
-                        chartTitle="Top 5 Best-Selling Products"
+                        chartTitle={top5View === 'products' ? 'Top 5 Best-Selling Products' : 'Top 5 Best-Selling Categories'}
                         isVisible={true}
-                        isLoading={insightLoading && activeInsight === 'Top 5 Best-Selling Products'}
-                        insight={chartInsights['Top 5 Best-Selling Products']}
+                        isLoading={insightLoading && activeInsight === (top5View === 'products' ? 'Top 5 Best-Selling Products' : 'Top 5 Best-Selling Categories')}
+                        insight={chartInsights[top5View === 'products' ? 'Top 5 Best-Selling Products' : 'Top 5 Best-Selling Categories']}
                       />
                     )}
                   </div>
@@ -1718,7 +1705,19 @@ function VisualizationPage() {
                 <h3>⏰ Time & Trend Analysis</h3>
                 <div className="chart-grid">
                   {/* Monthly Sales Trend with Dropdown */}
-                  <div className="chart">
+                  <div className="chart chart-with-insight" style={{ position: 'relative' }}>
+                    <AIButton
+                      onClick={() => handleInsightButton(
+                        'Monthly Trend',
+                        'Bar',
+                        prepareChartDataForAPI({
+                          labels: groupByMonth(productData, monthlyTrendMetric === 'revenue' ? 'totalSales' : monthlyTrendMetric).labels,
+                          values: groupByMonth(productData, monthlyTrendMetric === 'revenue' ? 'totalSales' : monthlyTrendMetric).values
+                        })
+                      )}
+                      isLoading={insightLoading && activeInsight === 'Monthly Trend'}
+                      isActive={activeInsight === 'Monthly Trend'}
+                    />
                     <div style={{ display: 'flex', alignItems: 'center', marginBottom: 12 }}>
                       <h4 style={{ margin: 0, marginRight: 16 }}>📈 Monthly Trend</h4>
                       <select
@@ -1752,6 +1751,53 @@ function VisualizationPage() {
                         borderSkipped: false
                       }]
                     }} options={chartOptions} />
+                    {activeInsight === 'Monthly Trend' && (
+                      <InsightTooltip
+                        chartTitle="Monthly Trend"
+                        isVisible={true}
+                        isLoading={insightLoading && activeInsight === 'Monthly Trend'}
+                        insight={chartInsights['Monthly Trend']}
+                      />
+                    )}
+                  </div>
+                  {/* Time vs Category Sales */}
+                  <div className="chart chart-with-insight" style={{ position: 'relative' }}>
+                    <AIButton
+                      onClick={() => handleInsightButton(
+                        'Time vs Category Sales',
+                        'Line',
+                        prepareChartDataForAPI({
+                          labels: productData.map(p => p.time ? new Date(p.time).toLocaleString(undefined, { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : 'Unknown'),
+                          values: dataBy('category', 'totalSales').keys.map(category =>
+                            productData.filter(p => p.category === category).reduce((acc, p) => acc + (p.totalSales || 0), 0)
+                          )
+                        })
+                      )}
+                      isLoading={insightLoading && activeInsight === 'Time vs Category Sales'}
+                      isActive={activeInsight === 'Time vs Category Sales'}
+                    />
+                    <h4>🎯 Time vs Category Sales</h4>
+                    <Line data={{
+                      labels: productData.map(p => p.time ? new Date(p.time).toLocaleString(undefined, { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : 'Unknown'),
+                      datasets: dataBy('category', 'totalSales').keys.map((category, index) => ({
+                        label: category,
+                        data: safeChartData(productData.filter(p => p.category === category).map(p => p.totalSales)),
+                        borderColor: modernColorPalette[index],
+                        backgroundColor: modernColorPalette[index] + '20',
+                        tension: 0.3,
+                        borderWidth: 2,
+                        pointRadius: 4,
+                        pointHoverRadius: 6
+                      }))
+                    }} options={chartOptions} />
+                    {activeInsight === 'Time vs Category Sales' && (
+                      <InsightTooltip
+                        chartTitle="Time vs Category Sales"
+                        isVisible={true}
+                        isLoading={insightLoading && activeInsight === 'Time vs Category Sales'}
+                        insight={chartInsights['Time vs Category Sales']}
+                      />
+                    )}
                   </div>
                   {/* Remove or comment out the old Daily Sales Trend chart here */}
                   {/* <div className="chart">
@@ -1775,7 +1821,7 @@ function VisualizationPage() {
                     }} options={chartOptions} />
                   </div> */}
 
-                  <div className="chart">
+                  {/* <div className="chart">
                     <h4>🎯 Time vs Category Sales</h4>
                     <Line data={{
                       labels: productData.map(p => p.time ? new Date(p.time).toLocaleString(undefined, { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : 'Unknown'),
@@ -1790,7 +1836,7 @@ function VisualizationPage() {
                         pointHoverRadius: 6
                       }))
                     }} options={chartOptions} />
-                  </div>
+                  </div> */}
 
                   {/* Sales by Date with Quantity - Additional Chart */}
                   <div className="chart chart-with-insight" style={{ position: 'relative' }}>
@@ -2140,7 +2186,25 @@ function VisualizationPage() {
                 <h3>🌍 Geographical Insights</h3>
                 <div className="chart-grid">
                   {/* Choropleth Map */}
-                  <div className="chart map-chart">
+                  <div className="chart map-chart chart-with-insight" style={{ position: 'relative' }}>
+                    <AIButton
+                      onClick={() => handleInsightButton(
+                        'Purchase Quantity by Country',
+                        'Map',
+                        prepareChartDataForAPI({
+                          labels: Object.keys(productData.reduce((acc, item) => {
+                            if (item.location) acc[item.location] = true;
+                            return acc;
+                          }, {})),
+                          values: Object.values(productData.reduce((acc, item) => {
+                            if (item.location) acc[item.location] = (acc[item.location] || 0) + (item.quantity || 0);
+                            return acc;
+                          }, {}))
+                        })
+                      )}
+                      isLoading={insightLoading && activeInsight === 'Purchase Quantity by Country'}
+                      isActive={activeInsight === 'Purchase Quantity by Country'}
+                    />
                     <h4>🗺️ Purchase Quantity by Country</h4>
                     <ReactTooltip>{tooltipContent}</ReactTooltip>
                     {/* Debug info */}
@@ -2311,6 +2375,14 @@ function VisualizationPage() {
                           ⚠️ Map loading error: {geoError}. Using fallback data.
                         </p>
                       </div>
+                    )}
+                    {activeInsight === 'Purchase Quantity by Country' && (
+                      <InsightTooltip
+                        chartTitle="Purchase Quantity by Country"
+                        isVisible={true}
+                        isLoading={insightLoading && activeInsight === 'Purchase Quantity by Country'}
+                        insight={chartInsights['Purchase Quantity by Country']}
+                      />
                     )}
                   </div>
 
