@@ -12,7 +12,12 @@ const { GoogleGenerativeAI } = require('@google/generative-ai');
 const app = express();
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: [
+    'https://sales-analysis-dashboard-951sxee8p-devbysanjay.vercel.app',
+    'http://localhost:3000'
+  ]
+}));
 app.use(express.json());
 app.use(morgan('dev'));
 
