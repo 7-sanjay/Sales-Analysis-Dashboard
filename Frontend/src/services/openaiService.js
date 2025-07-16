@@ -29,32 +29,31 @@ export const generateChartInsight = async (chartData, chartType, chartTitle, pro
       return null;
     }
 
+    // Chart context: describe what the chart is about
+    let chartContext = '';
+    if (chartType && chartTitle) {
+      if (chartType === 'Bar' && chartTitle.toLowerCase().includes('category')) {
+        chartContext = 'This chart shows the distribution of values by product category.';
+      } else if (chartType === 'Bar' && chartTitle.toLowerCase().includes('product')) {
+        chartContext = 'This chart shows the distribution of values by product.';
+      } else if (chartType === 'Pie' || chartType === 'Doughnut') {
+        chartContext = 'This chart shows the proportion of each category or location.';
+      } else if (chartType === 'Radar') {
+        chartContext = 'This radar chart compares multiple categories or metrics.';
+      } else if (chartType === 'Line') {
+        chartContext = 'This chart shows trends over time.';
+      } else {
+        chartContext = `This chart visualizes: ${chartTitle}`;
+      }
+    }
+
     // Fetch additional analytics data from backend
     const analyticsData = await fetchAnalyticsData();
     
     // Prepare comprehensive data analysis for insights
     const dataAnalysis = prepareDataAnalysis(productData, chartData, chartType, chartTitle, analyticsData);
 
-    const prompt = `Analyze this business data and provide a detailed, numerical insight about the visualization. Use the actual data values and product information to generate meaningful business intelligence with specific numbers and metrics.
-
-Chart Information:
-- Type: ${chartType}
-- Title: ${chartTitle}
-- Chart Data: ${JSON.stringify(chartData, null, 2)}
-
-Database Analysis:
-${JSON.stringify(dataAnalysis, null, 2)}
-
-Please provide a comprehensive, data-driven insight (minimum 30 words) that:
-1. References specific numerical values from the actual data (prices, quantities, profits, percentages)
-2. Identifies key trends or patterns with exact numbers
-3. Provides actionable business intelligence with concrete metrics
-4. Uses real product names, categories, or locations when relevant
-5. Includes percentage changes, averages, or other statistical measures
-6. Compares different categories, locations, or time periods with specific numbers
-7. Mentions specific revenue, profit, and quantity figures from the database
-
-Focus on what the data reveals about business performance, opportunities, or areas for improvement. Always include specific numerical analysis and ensure the insight is at least 30 words long.`;
+    const prompt = `Analyze this business data and provide a detailed, numerical insight about the visualization.\n\nChart Context: ${chartContext}\n\nChart Information:\n- Type: ${chartType}\n- Title: ${chartTitle}\n- Chart Data: ${JSON.stringify(chartData, null, 2)}\n\nDatabase Analysis:\n${JSON.stringify(dataAnalysis, null, 2)}\n\nPlease provide a comprehensive, data-driven insight (minimum 30 words) that:\n1. References specific numerical values from the actual data (prices, quantities, profits, percentages)\n2. Identifies key trends or patterns with exact numbers\n3. Provides actionable business intelligence with concrete metrics\n4. Uses real product names, categories, or locations when relevant\n5. Includes percentage changes, averages, or other statistical measures\n6. Compares different categories, locations, or time periods with specific numbers\n7. Mentions specific revenue, profit, and quantity figures from the database\n\nFocus on what the data reveals about business performance, opportunities, or areas for improvement. Always include specific numerical analysis and ensure the insight is at least 30 words long and directly related to the chart context.`;
 
     // Create AbortController for timeout
     const controller = new AbortController();
@@ -274,10 +273,21 @@ const prepareDataAnalysis = (productData, chartData, chartType, chartTitle, anal
 };
 
 // Fallback insights for when OpenAI API is not available
-export const getFallbackInsight = (chartType, chartTitle, productData = []) => {
-  console.log('Getting fallback insight for:', chartType, chartTitle);
-  
-  // Generate data-driven fallback insights using actual product data
+export const getFallbackInsight = (chartType, chartTitle, productData = [], chartData = {}) => {
+  // Try to generate a chart-specific fallback using chartData
+  if (chartData && chartData.labels && chartData.values && chartData.labels.length > 0 && chartData.values.length > 0) {
+    // Find top and bottom values
+    const maxIdx = chartData.values.indexOf(Math.max(...chartData.values));
+    const minIdx = chartData.values.indexOf(Math.min(...chartData.values));
+    const maxLabel = chartData.labels[maxIdx];
+    const minLabel = chartData.labels[minIdx];
+    const maxValue = chartData.values[maxIdx];
+    const minValue = chartData.values[minIdx];
+    const total = chartData.values.reduce((a, b) => a + b, 0);
+    const avg = chartData.values.reduce((a, b) => a + b, 0) / chartData.values.length;
+    return `This visualization shows data for ${chartData.labels.length} groups. The highest value is for '${maxLabel}' (${maxValue}), and the lowest is for '${minLabel}' (${minValue}). The total across all groups is ${total}, with an average of ${avg.toFixed(2)} per group. This chart highlights the distribution and key differences between groups.`;
+  }
+  // Fallback to previous logic if no chartData
   if (productData && productData.length > 0) {
     const totalRevenue = productData.reduce((sum, p) => sum + (p.totalSales || 0), 0);
     const totalProfit = productData.reduce((sum, p) => sum + (p.profit || 0), 0);
