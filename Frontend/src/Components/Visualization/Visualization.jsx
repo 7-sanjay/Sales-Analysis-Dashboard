@@ -100,6 +100,7 @@ function VisualizationPage() {
   const [hoveredChart, setHoveredChart] = useState(null);
   const [insightLoading, setInsightLoading] = useState(false);
   const [activeInsight, setActiveInsight] = useState(null);
+  const [monthlyTrendMetric, setMonthlyTrendMetric] = useState('revenue');
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -500,8 +501,21 @@ function VisualizationPage() {
   };
 
   // KPI Calculations
-  const bestSellingProduct = productData.reduce((best, current) => 
-    (current.totalSales > best.totalSales) ? current : best, { totalSales: 0 });
+  // Best Selling Product (by overall quantity sold across all entries)
+  const productQuantityMap = {};
+  productData.forEach(item => {
+    if (!item.productName) return;
+    productQuantityMap[item.productName] = (productQuantityMap[item.productName] || 0) + (item.quantity || 0);
+  });
+  let bestSellingProductName = 'N/A';
+  let bestSellingProductQuantity = 0;
+  Object.entries(productQuantityMap).forEach(([name, qty]) => {
+    if (qty > bestSellingProductQuantity) {
+      bestSellingProductName = name;
+      bestSellingProductQuantity = qty;
+    }
+  });
+  const bestSellingProduct = { productName: bestSellingProductName, quantity: bestSellingProductQuantity };
   
   const mostProfitableCategory = dataBy('category', 'profit');
   const topCategory = mostProfitableCategory.keys[mostProfitableCategory.values.indexOf(Math.max(...mostProfitableCategory.values))];
@@ -551,8 +565,8 @@ function VisualizationPage() {
 
   // --- KPI Calculations ---
   const now = new Date();
-  const threeHoursAgo = new Date(now.getTime() - 3 * 60 * 60 * 1000);
-  const sixHoursAgo = new Date(now.getTime() - 6 * 60 * 60 * 1000);
+  const threeDaysAgo = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000);
+  const sixDaysAgo = new Date(now.getTime() - 6 * 24 * 60 * 60 * 1000);
 
   // Helper to filter by time (assumes p.time is ISO string or Date)
   function isInRange(item, from, to) {
@@ -561,31 +575,30 @@ function VisualizationPage() {
     return t >= from && t < to;
   }
 
-  // Calculate sums for last 3 hours and previous 3 hours
+  // Calculate sums for last 3 days and previous 3 days
   function sumByTimeWindow(key) {
-    const last3 = productData.filter(p => isInRange(p, threeHoursAgo, now)).reduce((acc, p) => acc + (p[key] || 0), 0);
-    // const prev3 = productData.filter(p => isInRange(p, sixHoursAgo, threeHoursAgo)).reduce((acc, p) => acc + (p[key] || 0), 0);
+    const last3 = productData.filter(p => isInRange(p, threeDaysAgo, now)).reduce((acc, p) => acc + (p[key] || 0), 0);
+    const prev3 = productData.filter(p => isInRange(p, sixDaysAgo, threeDaysAgo)).reduce((acc, p) => acc + (p[key] || 0), 0);
     const total = productData.reduce((acc, p) => acc + (p[key] || 0), 0);
-    const rest = total - last3;
-    return { last3, rest, total };
+    return { last3, prev3, total };
   }
 
-  function percentChange(last, rest) {
-    if (rest === 0) {
+  function percentChange(last, prev) {
+    if (prev === 0) {
       if (last > 0) return 100; // All new data, show 100% up
       if (last < 0) return -100; // Should not happen for sales, but handle
       return 0; // Both zero
     }
-    return ((last - rest) / Math.abs(rest)) * 100;
+    return ((last - prev) / Math.abs(prev)) * 100;
   }
 
   const revenueWindow = sumByTimeWindow('totalSales');
   const profitWindow = sumByTimeWindow('profit');
   const unitsWindow = sumByTimeWindow('quantity');
 
-  const revenueChange = percentChange(revenueWindow.last3, revenueWindow.rest);
-  const profitChange = percentChange(profitWindow.last3, profitWindow.rest);
-  const unitsChange = percentChange(unitsWindow.last3, unitsWindow.rest);
+  const revenueChange = percentChange(revenueWindow.last3, revenueWindow.prev3);
+  const profitChange = percentChange(profitWindow.last3, profitWindow.prev3);
+  const unitsChange = percentChange(unitsWindow.last3, unitsWindow.prev3);
 
   function renderChange(val, small) {
     if (val === 0) return <span style={{ color: '#888', fontSize: small ? '0.95rem' : undefined, fontWeight: 500 }}>&#8596; 0%</span>;
@@ -659,6 +672,20 @@ function VisualizationPage() {
       return [0];
     }
     return arr;
+  }
+
+  // Helper to group data by month
+  function groupByMonth(data, valueKey) {
+    const monthly = {};
+    data.forEach(item => {
+      if (item.time) {
+        const date = new Date(item.time);
+        const monthKey = date.toLocaleDateString('en-US', { year: 'numeric', month: 'short' });
+        monthly[monthKey] = (monthly[monthKey] || 0) + (item[valueKey] || 0);
+      }
+    });
+    const sortedMonths = Object.keys(monthly).sort((a, b) => new Date(a) - new Date(b));
+    return { labels: sortedMonths, values: sortedMonths.map(m => monthly[m]) };
   }
 
   if (isLoading) {
@@ -768,7 +795,7 @@ function VisualizationPage() {
                 </Sparklines>
                 <div className="kpi-change-row">
                   <span className="kpi-change-value">{renderChange(revenueChange, true)}</span>
-                  <span className="kpi-change-label">Since last 3 hours</span>
+                  <span className="kpi-change-label">Since last 3 days</span>
                 </div>
               </div>
               <div className="kpi-card">
@@ -779,7 +806,7 @@ function VisualizationPage() {
                 </Sparklines>
                 <div className="kpi-change-row">
                   <span className="kpi-change-value">{renderChange(profitChange, true)}</span>
-                  <span className="kpi-change-label">Since last 3 hours</span>
+                  <span className="kpi-change-label">Since last 3 days</span>
                 </div>
               </div>
               <div className="kpi-card">
@@ -790,7 +817,7 @@ function VisualizationPage() {
                 </Sparklines>
                 <div className="kpi-change-row">
                   <span className="kpi-change-value">{renderChange(unitsChange, true)}</span>
-                  <span className="kpi-change-label">Since last 3 hours</span>
+                  <span className="kpi-change-label">Since last 3 days</span>
                 </div>
               </div>
               <div className="kpi-card">
@@ -893,6 +920,19 @@ function VisualizationPage() {
                       }]
                     }} options={{
                       ...chartOptions,
+                      plugins: {
+                        ...chartOptions.plugins,
+                        tooltip: {
+                          ...chartOptions.plugins.tooltip,
+                          callbacks: {
+                            ...chartOptions.plugins.tooltip.callbacks,
+                            label: function(context) {
+                              const value = context.parsed.r || 0;
+                              return `${context.dataset.label}: ${value.toLocaleString('en-IN', { maximumFractionDigits: 2 })}%`;
+                            }
+                          }
+                        }
+                      },
                       scales: {
                         r: {
                           angleLines: {
@@ -919,43 +959,49 @@ function VisualizationPage() {
                     )}
                   </div>
                   {/* Category-wise Average Profit Margin (%) */}
+                  {/* Category-wise Product Sold */}
                   <div className="chart chart-with-insight" style={{ position: 'relative' }}>
                     <AIButton
                       onClick={() => handleInsightButton(
-                        'Category-wise Average Profit Margin (%)',
+                        'Category-wise Product Sold',
                         'Radar',
                         prepareChartDataForAPI({
-                          labels: averageBy('category', 'profit').keys,
-                          values: averageBy('category', 'profit').keys.map(category => {
-                            const avgProfit = averageBy('category', 'profit').values[averageBy('category', 'profit').keys.indexOf(category)];
-                            const avgPrice = averageBy('category', 'price').values[averageBy('category', 'price').keys.indexOf(category)];
-                            return avgPrice ? ((avgProfit / avgPrice) * 100) : 0;
-                          })
+                          labels: dataBy('category', 'quantity').keys,
+                          values: dataBy('category', 'quantity').values
                         })
                       )}
-                      isLoading={insightLoading && activeInsight === 'Category-wise Average Profit Margin (%)'}
-                      isActive={activeInsight === 'Category-wise Average Profit Margin (%)'}
+                      isLoading={insightLoading && activeInsight === 'Category-wise Product Sold'}
+                      isActive={activeInsight === 'Category-wise Product Sold'}
                     />
-                    <h4>📊 Category-wise Average Profit Margin (%)</h4>
+                    <h4>📊 Category-wise Product Sold</h4>
                     <Radar data={{
-                      labels: averageBy('category', 'profit').keys,
+                      labels: dataBy('category', 'quantity').keys,
                       datasets: [{
-                        label: 'Avg Profit Margin (%)',
-                        data: safeChartData(averageBy('category', 'profit').keys.map(category => {
-                          const avgProfit = averageBy('category', 'profit').values[averageBy('category', 'profit').keys.indexOf(category)];
-                          const avgPrice = averageBy('category', 'price').values[averageBy('category', 'price').keys.indexOf(category)];
-                          return avgPrice ? ((avgProfit / avgPrice) * 100) : 0;
-                        })),
-                        backgroundColor: 'rgba(240, 147, 251, 0.2)',
-                        borderColor: 'rgba(240, 147, 251, 1)',
+                        label: 'Quantity Sold',
+                        data: safeChartData(dataBy('category', 'quantity').values),
+                        backgroundColor: 'rgba(67, 233, 123, 0.2)',
+                        borderColor: 'rgba(67, 233, 123, 1)',
                         borderWidth: 2,
-                        pointBackgroundColor: 'rgba(240, 147, 251, 1)',
+                        pointBackgroundColor: 'rgba(67, 233, 123, 1)',
                         pointBorderColor: '#fff',
                         pointHoverBackgroundColor: '#fff',
-                        pointHoverBorderColor: 'rgba(240, 147, 251, 1)'
+                        pointHoverBorderColor: 'rgba(67, 233, 123, 1)'
                       }]
                     }} options={{
                       ...chartOptions,
+                      plugins: {
+                        ...chartOptions.plugins,
+                        tooltip: {
+                          ...chartOptions.plugins.tooltip,
+                          callbacks: {
+                            ...chartOptions.plugins.tooltip.callbacks,
+                            label: function(context) {
+                              const value = context.parsed.r || 0;
+                              return `${context.dataset.label}: ${value.toLocaleString('en-IN')}`;
+                            }
+                          }
+                        }
+                      },
                       scales: {
                         r: {
                           angleLines: {
@@ -972,12 +1018,12 @@ function VisualizationPage() {
                         }
                       }
                     }} />
-                    {activeInsight === 'Category-wise Average Profit Margin (%)' && (
+                    {activeInsight === 'Category-wise Product Sold' && (
                       <InsightTooltip
-                        chartTitle="Category-wise Average Profit Margin (%)"
+                        chartTitle="Category-wise Product Sold"
                         isVisible={true}
-                        isLoading={insightLoading && activeInsight === 'Category-wise Average Profit Margin (%)'}
-                        insight={chartInsights['Category-wise Average Profit Margin (%)']}
+                        isLoading={insightLoading && activeInsight === 'Category-wise Product Sold'}
+                        insight={chartInsights['Category-wise Product Sold']}
                       />
                     )}
                   </div>
@@ -1011,6 +1057,19 @@ function VisualizationPage() {
                       }]
                     }} options={{
                       ...chartOptions,
+                      plugins: {
+                        ...chartOptions.plugins,
+                        tooltip: {
+                          ...chartOptions.plugins.tooltip,
+                          callbacks: {
+                            ...chartOptions.plugins.tooltip.callbacks,
+                            label: function(context) {
+                              const value = context.parsed.r || 0;
+                              return `${context.dataset.label}: ${value.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
+                            }
+                          }
+                        }
+                      },
                       scales: {
                         r: {
                           angleLines: {
@@ -1655,97 +1714,44 @@ function VisualizationPage() {
               <div className="chart-section">
                 <h3>⏰ Time & Trend Analysis</h3>
                 <div className="chart-grid">
-                  {/* Sales by Date - New Chart */}
-                  <div className="chart chart-with-insight" style={{ position: 'relative' }}>
-                    <AIButton
-                      onClick={() => {
-                        // Group sales by date
-                        const salesByDate = {};
-                        productData.forEach(item => {
-                          if (item.time) {
-                            const date = new Date(item.time);
-                            const dateKey = date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
-                            salesByDate[dateKey] = (salesByDate[dateKey] || 0) + (item.totalSales || 0);
-                          }
-                        });
-                        
-                        const sortedDates = Object.keys(salesByDate).sort((a, b) => new Date(a) - new Date(b));
-                        
-                        handleInsightButton(
-                          'Sales by Date',
-                          'Bar',
-                          prepareChartDataForAPI({
-                            labels: sortedDates,
-                            values: sortedDates.map(date => salesByDate[date])
-                          })
-                        );
-                      }}
-                      isLoading={insightLoading && activeInsight === 'Sales by Date'}
-                      isActive={activeInsight === 'Sales by Date'}
-                    />
-                    <h4>📅 Sales by Date</h4>
+                  {/* Monthly Sales Trend with Dropdown */}
+                  <div className="chart">
+                    <div style={{ display: 'flex', alignItems: 'center', marginBottom: 12 }}>
+                      <h4 style={{ margin: 0, marginRight: 16 }}>📈 Monthly Trend</h4>
+                      <select
+                        value={monthlyTrendMetric}
+                        onChange={e => setMonthlyTrendMetric(e.target.value)}
+                        style={{ padding: '0.3rem 0.7rem', borderRadius: 6, fontSize: '1rem' }}
+                      >
+                        <option value="revenue">Monthly Revenue</option>
+                        <option value="quantity">Monthly Product Sold</option>
+                        <option value="profit">Monthly Profit</option>
+                      </select>
+                    </div>
                     <Bar data={{
-                      labels: (() => {
-                        const salesByDate = {};
-                        productData.forEach(item => {
-                          if (item.time) {
-                            const date = new Date(item.time);
-                            const dateKey = date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
-                            salesByDate[dateKey] = (salesByDate[dateKey] || 0) + (item.totalSales || 0);
-                          }
-                        });
-                        return Object.keys(salesByDate).sort((a, b) => new Date(a) - new Date(b));
-                      })(),
+                      labels: groupByMonth(productData, monthlyTrendMetric === 'revenue' ? 'totalSales' : monthlyTrendMetric).labels,
                       datasets: [{
-                        label: 'Total Sales ₹',
-                        data: (() => {
-                          const salesByDate = {};
-                          productData.forEach(item => {
-                            if (item.time) {
-                              const date = new Date(item.time);
-                              const dateKey = date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
-                              salesByDate[dateKey] = (salesByDate[dateKey] || 0) + (item.totalSales || 0);
-                            }
-                          });
-                          const sortedDates = Object.keys(salesByDate).sort((a, b) => new Date(a) - new Date(b));
-                          return safeChartData(sortedDates.map(date => salesByDate[date]));
-                        })(),
-                        backgroundColor: 'rgba(79, 172, 254, 0.8)',
-                        borderColor: 'rgba(79, 172, 254, 1)',
+                        label:
+                          monthlyTrendMetric === 'revenue' ? 'Revenue ₹' :
+                          monthlyTrendMetric === 'quantity' ? 'Product Sold' :
+                          'Profit ₹',
+                        data: groupByMonth(productData, monthlyTrendMetric === 'revenue' ? 'totalSales' : monthlyTrendMetric).values,
+                        backgroundColor:
+                          monthlyTrendMetric === 'revenue' ? 'rgba(102, 126, 234, 0.8)' :
+                          monthlyTrendMetric === 'quantity' ? 'rgba(67, 233, 123, 0.8)' :
+                          'rgba(250, 112, 154, 0.8)',
+                        borderColor:
+                          monthlyTrendMetric === 'revenue' ? 'rgba(102, 126, 234, 1)' :
+                          monthlyTrendMetric === 'quantity' ? 'rgba(67, 233, 123, 1)' :
+                          'rgba(250, 112, 154, 1)',
                         borderWidth: 2,
                         borderRadius: 8,
                         borderSkipped: false
                       }]
-                    }} options={{
-                      ...chartOptions,
-                      plugins: {
-                        ...chartOptions.plugins,
-                        legend: {
-                          display: false
-                        },
-                        tooltip: {
-                          ...chartOptions.plugins.tooltip,
-                          callbacks: {
-                            ...chartOptions.plugins.tooltip.callbacks,
-                            label: function(context) {
-                              const value = context.parsed.y || 0;
-                              return `Sales: ₹${value.toLocaleString('en-IN')}`;
-                            }
-                          }
-                        }
-                      }
-                    }} />
-                    {activeInsight === 'Sales by Date' && (
-                      <InsightTooltip
-                        chartTitle="Sales by Date"
-                        isVisible={true}
-                        isLoading={insightLoading && activeInsight === 'Sales by Date'}
-                        insight={chartInsights['Sales by Date']}
-                      />
-                    )}
+                    }} options={chartOptions} />
                   </div>
-
-                  <div className="chart">
+                  {/* Remove or comment out the old Daily Sales Trend chart here */}
+                  {/* <div className="chart">
                     <h4>📈 Daily Sales Trend</h4>
                     <Line data={{
                       labels: productData.map(p => p.time ? new Date(p.time).toLocaleString(undefined, { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : 'Unknown'),
@@ -1764,7 +1770,7 @@ function VisualizationPage() {
                         pointHoverRadius: 8
                       }]
                     }} options={chartOptions} />
-                  </div>
+                  </div> */}
 
                   <div className="chart">
                     <h4>🎯 Time vs Category Sales</h4>
@@ -2132,7 +2138,7 @@ function VisualizationPage() {
                 <div className="chart-grid">
                   {/* Choropleth Map */}
                   <div className="chart map-chart">
-                    <h4>🗺️ Purchase Quantity by Country (Interactive Map)</h4>
+                    <h4>🗺️ Purchase Quantity by Country</h4>
                     <ReactTooltip>{tooltipContent}</ReactTooltip>
                     {/* Debug info */}
                     {/* Remove this block:

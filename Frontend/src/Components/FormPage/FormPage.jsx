@@ -318,101 +318,145 @@ function FormPage() {
             <div className="form-container">
                 <h2 className="form-title">{isEditing ? "Edit Product Data" : "Add Product Data"}</h2>
                 <form onSubmit={handleSubmit}>
-                    <select
-                        className="form-input"
-                        name="category"
-                        value={formData.category}
-                        onChange={handleChange}
-                        required
-                    >
-                        <option value="">Select Category</option>
-                        {categoryOptions.map((cat) => (
-                            <option key={cat} value={cat}>{cat}</option>
-                        ))}
-                    </select>
-                    <select
-                        className="form-input"
-                        name="productName"
-                        value={formData.productName}
-                        onChange={handleChange}
-                        required
-                        disabled={!formData.category}
-                    >
-                        <option value="">{formData.category ? 'Select Product Name' : 'Select Category First'}</option>
-                        {formData.category && productOptions[formData.category].map((prod) => (
-                            <option key={prod} value={prod}>{prod}</option>
-                        ))}
-                    </select>
-                    <div className="form-input" style={{ textAlign: 'left', color: '#555', background: '#f5f7fa', fontWeight: 500, marginBottom: '0.5rem', border: '1px solid #eee', borderRadius: '8px' }}>
-                        Date & Time: {formData.time ? new Date(formData.time).toLocaleString(undefined, { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : ''}
+                    <div className="form-row">
+                        <div className="form-field-group">
+                            <label htmlFor="category" style={{ display: 'block', fontWeight: 600, marginBottom: 4 }}>Category:</label>
+                            <select
+                                className="form-input"
+                                id="category"
+                                name="category"
+                                value={formData.category}
+                                onChange={handleChange}
+                                required
+                            >
+                                <option value="">Select Category</option>
+                                {categoryOptions.map((cat) => (
+                                    <option key={cat} value={cat}>{cat}</option>
+                                ))}
+                            </select>
+                        </div>
+                        <div className="form-field-group">
+                            <label htmlFor="productName" style={{ display: 'block', fontWeight: 600, marginBottom: 4 }}>Product Name:</label>
+                            <select
+                                className="form-input"
+                                id="productName"
+                                name="productName"
+                                value={formData.productName}
+                                onChange={handleChange}
+                                required
+                                disabled={!formData.category}
+                            >
+                                <option value="">{formData.category ? 'Select Product Name' : 'Select Category First'}</option>
+                                {formData.category && productOptions[formData.category].map((prod) => (
+                                    <option key={prod} value={prod}>{prod}</option>
+                                ))}
+                            </select>
+                        </div>
                     </div>
-                    <input
-                        className="form-input"
-                        name="price"
-                        placeholder="Price"
-                        onChange={handleChange}
-                        value={formData.price}
-                        required
-                        disabled={!!(formData.category && formData.productName)}
-                    />
-                    <input
-                        className="form-input"
-                        name="quantity"
-                        placeholder="Quantity"
-                        onChange={handleChange}
-                        value={formData.quantity}
-                        required
-                    />
-                    <input
-                        className="form-input"
-                        name="netPrice"
-                        placeholder="Net Price"
-                        onChange={handleChange}
-                        value={formData.netPrice}
-                        required
-                        disabled={!!(formData.category && formData.productName)}
-                    />
-                    <input
-                        className="form-input"
-                        name="profit"
-                        value={formData.profit}
-                        placeholder="Profit"
-                        disabled
-                    />
-                    <input
-                        className="form-input"
-                        name="totalSales"
-                        value={formData.totalSales}
-                        placeholder="Total Sales"
-                        disabled
-                    />
-                    <input
-                        className="form-input"
-                        name="totalProfit"
-                        value={formData.totalProfit}
-                        placeholder="Total Profit"
-                        disabled
-                    />
-                    <select
-                        className="form-input"
-                        name="location"
-                        value={formData.location}
-                        onChange={handleChange}
-                        required
-                    >
-                        <option value="">Select Country</option>
-                        <option value="United States">United States</option>
-                        <option value="India">India</option>
-                        <option value="United Kingdom">United Kingdom</option>
-                        <option value="Canada">Canada</option>
-                        <option value="Australia">Australia</option>
-                        <option value="Germany">Germany</option>
-                        <option value="France">France</option>
-                        <option value="Japan">Japan</option>
-                        <option value="Brazil">Brazil</option>
-                        <option value="South Africa">South Africa</option>
-                        <option value="Russia">Russia</option>
-                    </select>
+                    <div className="form-field-group full-width">
+                        <label style={{ display: 'block', fontWeight: 600, marginBottom: 4 }}>Date & Time:</label>
+                        <div className="form-input" style={{ textAlign: 'left', color: '#555', background: '#f5f7fa', fontWeight: 500, border: '1px solid #eee', borderRadius: '8px' }}>
+                            {formData.time ? new Date(formData.time).toLocaleString(undefined, { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : ''}
+                        </div>
+                    </div>
+                    <div className="form-row">
+                        <div className="form-field-group">
+                            <label htmlFor="price" style={{ display: 'block', fontWeight: 600, marginBottom: 4 }}>Price:</label>
+                            <input
+                                className="form-input"
+                                id="price"
+                                name="price"
+                                placeholder="Price"
+                                onChange={handleChange}
+                                value={formData.price}
+                                required
+                                disabled={!!(formData.category && formData.productName)}
+                            />
+                        </div>
+                        <div className="form-field-group">
+                            <label htmlFor="netPrice" style={{ display: 'block', fontWeight: 600, marginBottom: 4 }}>Net Price:</label>
+                            <input
+                                className="form-input"
+                                id="netPrice"
+                                name="netPrice"
+                                placeholder="Net Price"
+                                onChange={handleChange}
+                                value={formData.netPrice}
+                                required
+                                disabled={!!(formData.category && formData.productName)}
+                            />
+                        </div>
+                    </div>
+                    <div className="form-row">
+                        <div className="form-field-group">
+                            <label htmlFor="quantity" style={{ display: 'block', fontWeight: 600, marginBottom: 4 }}>Quantity:</label>
+                            <input
+                                className="form-input"
+                                id="quantity"
+                                name="quantity"
+                                placeholder="Quantity"
+                                onChange={handleChange}
+                                value={formData.quantity}
+                                required
+                            />
+                        </div>
+                        <div className="form-field-group">
+                            <label htmlFor="location" style={{ display: 'block', fontWeight: 600, marginBottom: 4 }}>Location:</label>
+                            <select
+                                className="form-input"
+                                id="location"
+                                name="location"
+                                value={formData.location}
+                                onChange={handleChange}
+                                required
+                            >
+                                <option value="">Select Location</option>
+                                <option value="India">India</option>
+                                <option value="United States">United States</option>
+                                <option value="United Kingdom">United Kingdom</option>
+                                <option value="Canada">Canada</option>
+                                <option value="Australia">Australia</option>
+                                <option value="Germany">Germany</option>
+                                <option value="France">France</option>
+                                <option value="Japan">Japan</option>
+                                <option value="Brazil">Brazil</option>
+                                <option value="South Africa">South Africa</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div className="form-field-group full-width">
+                        <label htmlFor="profit" style={{ display: 'block', fontWeight: 600, marginBottom: 4 }}>Profit:</label>
+                        <input
+                            className="form-input"
+                            id="profit"
+                            name="profit"
+                            value={formData.profit}
+                            placeholder="Profit"
+                            disabled
+                        />
+                    </div>
+                    <div className="form-field-group full-width">
+                        <label htmlFor="totalSales" style={{ display: 'block', fontWeight: 600, marginBottom: 4 }}>Total Sales:</label>
+                        <input
+                            className="form-input"
+                            id="totalSales"
+                            name="totalSales"
+                            value={formData.totalSales}
+                            placeholder="Total Sales"
+                            disabled
+                        />
+                    </div>
+                    <div className="form-field-group full-width">
+                        <label htmlFor="totalProfit" style={{ display: 'block', fontWeight: 600, marginBottom: 4 }}>Total Profit:</label>
+                        <input
+                            className="form-input"
+                            id="totalProfit"
+                            name="totalProfit"
+                            value={formData.totalProfit}
+                            placeholder="Total Profit"
+                            disabled
+                        />
+                    </div>
                     <div className="form-buttons-row">
                         <button type="submit" className="form-button">
                             {isEditing ? "Update" : "Submit"}

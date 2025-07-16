@@ -12,53 +12,72 @@ body, #root, .App {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--bg-primary, #f9f9f9);
+  background: #f8f9fa;
 }
 
 .form-container {
-  max-width: 500px;
-  max-height: 98vh;
-  padding: 1.2rem 0.7rem;
-  margin: 0 auto;
-  background: var(--bg-secondary, linear-gradient(135deg, #f9f9f9 0%, #e0f7ff 100%));
-  box-shadow: var(--shadow-lg, 0 10px 32px rgba(102, 126, 234, 0.15));
-  border-radius: var(--border-radius-xl, 24px);
-  text-align: center;
-  transition: all 0.3s cubic-bezier(0.4,0,0.2,1);
-  border: 1px solid var(--border-color, #e0e7ef);
-  backdrop-filter: blur(10px);
-  overflow-y: auto;
-}
-
-.form-container:hover {
-  box-shadow: var(--shadow-xl, 0 15px 40px rgba(102, 126, 234, 0.25));
-  transform: translateY(-8px) scale(1.01);
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 2px 16px rgba(0,0,0,0.07);
+  padding: 1.5rem 2.2rem;
+  max-width: 600px;
+  width: 100%;
 }
 
 .form-title {
-  margin-bottom: 0.7rem;
   font-size: 1.3rem;
-  color: var(--text-primary, #333);
-  font-weight: 800;
-  letter-spacing: -0.02em;
-  background: var(--primary-gradient, linear-gradient(to right, #667eea, #764ba2));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  text-shadow: none;
+  font-weight: 700;
+  margin-bottom: 1rem;
+  text-align: center;
+}
+
+form {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.7rem 1.2rem;
+}
+
+.form-field-group {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 0;
+}
+
+.form-field-group.full-width {
+  grid-column: 1 / -1;
+}
+
+.form-title {
+  grid-column: 1 / -1;
+}
+
+.form-buttons-row {
+  grid-column: 1 / -1;
+}
+
+label {
+  font-size: 0.98rem;
+  font-weight: 600;
+  margin-bottom: 0.15rem;
+  color: #333;
 }
 
 .form-input {
   width: 100%;
-  padding: 0.5rem 0.7rem;
-  margin-bottom: 0.5rem;
-  border: 1px solid var(--border-color, #ddd);
-  border-radius: var(--border-radius-lg, 12px);
-  transition: border 0.3s, box-shadow 0.3s;
-  font-size: 0.98rem;
-  color: var(--text-secondary, #333);
-  background: var(--bg-primary, #fff);
-  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.04);
+  padding: 0.35rem 0.7rem;
+  font-size: 0.97rem;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  margin-bottom: 0.2rem;
+  background: #f5f7fa;
+  box-sizing: border-box;
+  min-height: 32px;
+  max-height: 36px;
+}
+
+.form-input:disabled {
+  background: #f0f0f0;
+  color: #aaa;
 }
 
 .form-input:focus {
@@ -123,30 +142,80 @@ body, #root, .App {
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: 7px;
-  margin-top: 0.7rem;
-  flex-wrap: wrap;
+  gap: 1.2rem;
+  margin-top: 1.2rem;
+}
+
+.form-buttons-row button {
+  min-width: 110px;
+  padding: 0.5rem 1.2rem;
+  font-size: 1rem;
+  border-radius: 6px;
+}
+
+.form-row {
+  display: flex;
+  gap: 1.2rem;
+}
+.form-row .form-field-group {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+@media (max-width: 700px) {
+  form {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  .form-title, .form-buttons-row, .form-field-group.full-width {
+    grid-column: auto;
+  }
+  .form-container {
+    max-width: 98vw;
+    padding: 0.7rem 0.3rem;
+  }
+  .form-title {
+    font-size: 1.05rem;
+  }
+  .form-input {
+    font-size: 0.93rem;
+    padding: 0.28rem 0.5rem;
+    min-height: 28px;
+    max-height: 32px;
+  }
+  label {
+    font-size: 0.93rem;
+  }
+  .form-row {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  .form-buttons-row {
+    flex-direction: column;
+    gap: 0.6rem;
+  }
+  .form-buttons-row button {
+    width: 100%;
+    min-width: 0;
+  }
 }
 
 @media (max-width: 600px) {
   .form-container {
     max-width: 98vw;
-    padding: 0.4rem 0.1rem;
+    padding: 0.7rem 0.3rem;
   }
   .form-title {
-    font-size: 1rem;
-    margin-bottom: 0.4rem;
+    font-size: 1.05rem;
   }
   .form-input {
-    font-size: 0.9rem;
-    padding: 0.4rem 0.5rem;
-    margin-bottom: 0.3rem;
+    font-size: 0.93rem;
+    padding: 0.28rem 0.5rem;
+    min-height: 28px;
+    max-height: 32px;
   }
-  .form-buttons-row {
-    gap: 5px;
-  }
-  .form-button {
-    font-size: 0.9rem;
-    padding: 0.5rem 0.7rem;
+  label {
+    font-size: 0.93rem;
   }
 }
