@@ -1,6 +1,31 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './InventoryPage.css';
+import { Sparklines, SparklinesLine } from 'react-sparklines';
+import { Radar } from 'react-chartjs-2';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  RadialLinearScale,
+  PointElement,
+  LineElement,
+  Filler,
+  Tooltip,
+  Legend
+} from 'chart.js';
+import { useState as useReactState } from 'react';
+
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  RadialLinearScale,
+  PointElement,
+  LineElement,
+  Filler,
+  Tooltip,
+  Legend
+);
 
 const categoryOptions = [
     'Smartphones', 'Laptops', 'Tablets', 'Televisions',
@@ -29,6 +54,8 @@ function InventoryPage() {
     const [filterCategory, setFilterCategory] = useState('');
     const [refreshing, setRefreshing] = useState(false);
     const navigate = useNavigate();
+    const [insight, setInsight] = useReactState('');
+    const [insightLoading, setInsightLoading] = useReactState(false);
 
     useEffect(() => {
         fetchInventory();
@@ -142,6 +169,41 @@ function InventoryPage() {
         displayRows = displayRows.filter(row => row.category === filterCategory);
     }
 
+    // KPI calculations
+    const totalInventoryValue = inventory.reduce((sum, item) => sum + ((item.price || 0) * (item.stock || 0)), 0);
+    const totalUnits = inventory.reduce((sum, item) => sum + (item.stock || 0), 0);
+    const lowStockCount = inventory.filter(item => (item.stock || 0) <= 7).length;
+    const categoryStock = {};
+    inventory.forEach(item => {
+      if (!categoryStock[item.category]) categoryStock[item.category] = 0;
+      categoryStock[item.category] += item.stock || 0;
+    });
+    const radarData = {
+      labels: Object.keys(categoryStock),
+      datasets: [
+        {
+          label: 'Stock by Category',
+          data: Object.values(categoryStock),
+          backgroundColor: 'rgba(102, 126, 234, 0.2)',
+          borderColor: 'rgba(102, 126, 234, 1)',
+          borderWidth: 2,
+          pointBackgroundColor: 'rgba(102, 126, 234, 1)',
+          pointBorderColor: '#fff',
+          pointHoverBackgroundColor: '#fff',
+          pointHoverBorderColor: 'rgba(102, 126, 234, 1)'
+        }
+      ]
+    };
+
+    // Simulate AI insight (replace with real call if needed)
+    const handleInsight = () => {
+      setInsightLoading(true);
+      setTimeout(() => {
+        setInsight('This radar chart shows the distribution of inventory stock across categories. Use it to quickly spot overstocked or understocked categories.');
+        setInsightLoading(false);
+      }, 1200);
+    };
+
     return (
         <div>
             <div className="inventory-main-layout">
@@ -198,6 +260,7 @@ function InventoryPage() {
                             <button className="go-home-button" onClick={() => navigate('/form')}>Add Product</button>
                             <button className="go-home-button" onClick={() => navigate('/table-view')}>Table View</button>
                             <button className="go-home-button" onClick={() => navigate('/visualization')}>Visualization</button>
+                            <button className="go-home-button" onClick={() => navigate('/inventory-visualization')}>Inventory Visualization</button>
                             <button className="go-home-button" onClick={() => navigate('/')}>Login/Home</button>
                         </div>
                     </div>

@@ -746,6 +746,9 @@ function VisualizationPage() {
           <button className="go-home-button" onClick={() => navigate('/form')}>
             Add Product
           </button>
+          <button className="go-home-button" onClick={() => navigate('/inventory')}>
+            Inventory
+          </button>
         </div>
 
       </div>
