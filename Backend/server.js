@@ -14,8 +14,9 @@ const app = express();
 // Middleware
 app.use(cors({
   origin: [
-    'https://sales-analysis-dashboard-951sxee8p-devbysanjay.vercel.app',
-    'http://localhost:3000'
+    'https://sales-analysis-dashboard.vercel.app', // production
+    'https://sales-analysis-dashboard-951sxee8p-devbysanjay.vercel.app', // preview/dev
+    'http://localhost:3000' // local dev
   ]
 }));
 app.use(express.json());
