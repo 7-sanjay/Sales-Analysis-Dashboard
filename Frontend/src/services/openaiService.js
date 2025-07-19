@@ -1,7 +1,9 @@
 // Function to fetch analytics data from backend
+const BASE_URL = process.env.REACT_APP_API_BASE_URL || '';
+
 export const fetchAnalyticsData = async () => {
   try {
-    const response = await fetch(`/api/analytics`);
+    const response = await fetch(`${BASE_URL}/api/analytics`);
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
@@ -15,7 +17,7 @@ export const fetchAnalyticsData = async () => {
 export const generateChartInsight = async (chartData) => {
   try {
     // Send chartData to backend Gemini endpoint
-    const response = await fetch('/api/generate-insight', {
+    const response = await fetch(`${BASE_URL}/api/generate-insight`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -33,7 +35,7 @@ export const generateChartInsight = async (chartData) => {
   }
 };
 
-// Fallback insights for when OpenAI API is not available
+// Fallback insights for when Gemini API is not available
 export const getFallbackInsight = (chartType, chartTitle, productData = [], chartData = {}) => {
   // Try to generate a chart-specific fallback using chartData
   if (chartData && chartData.labels && chartData.values && chartData.labels.length > 0 && chartData.values.length > 0) {
