@@ -6,7 +6,9 @@ const inventorySchema = new mongoose.Schema({
     stock: { type: Number, required: true },
     price: { type: Number, default: 0 },
     netPrice: { type: Number, default: 0 },
-    updatedAt: { type: Date, default: Date.now }
+    updatedAt: { type: Date, default: Date.now },
+    lastLowStockAlertAt: { type: Date, default: null },
+    lastOutOfStockAlertAt: { type: Date, default: null }
 }, { collection: 'inventory' });
 
 const Inventory = mongoose.model('Inventory', inventorySchema);

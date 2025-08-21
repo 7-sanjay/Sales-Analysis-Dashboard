@@ -1,0 +1,23 @@
+Table,Column,Data Type,Key Type,Required,Default,Description
+products,_id,ObjectId,PK,true,auto-generated,MongoDB auto-generated unique identifier
+products,id,Number,-,false,-,Custom product ID (optional)
+products,productName,String,-,true,-,Name of the product
+products,time,Date,-,true,-,Timestamp of the sale/transaction
+products,price,Number,-,true,-,Selling price of the product
+products,quantity,Number,-,true,-,Quantity sold
+products,netPrice,Number,-,true,-,Cost price of the product
+products,profit,Number,-,false,0,Profit per unit
+products,category,String,-,true,-,Product category
+products,totalSales,Number,-,false,0,Total sales amount
+products,totalProfit,Number,-,false,0,Total profit amount
+products,location,String,-,true,-,Geographic location of sale
+products,createdAt,Date,-,false,current time,Record creation timestamp
+products,inventory,Array,-,false,-,Embedded inventory subdocument (currently unused)
+inventory,_id,ObjectId,PK,true,auto-generated,MongoDB auto-generated unique identifier
+inventory,productName,String,-,true,-,Name of the product
+inventory,category,String,-,true,-,Product category
+inventory,stock,Number,-,true,-,Available stock quantity
+inventory,price,Number,-,false,0,Selling price
+inventory,netPrice,Number,-,false,0,Cost price
+inventory,updatedAt,Date,-,false,current time,Last update timestamp
+

@@ -1,0 +1,60 @@
+# Database Schema Documentation
+## Sales Analysis Dashboard
+
+### Database: MongoDB (MongoDB Atlas)
+### ODM: Mongoose
+
+---
+
+## Table 1: `products`
+
+| Column | Data Type | Key Type | Required | Default | Description |
+|--------|-----------|----------|----------|---------|-------------|
+| `_id` | ObjectId | PK | true | auto-generated | MongoDB auto-generated unique identifier |
+| `id` | Number | - | false | - | Custom product ID (optional) |
+| `productName` | String | - | true | - | Name of the product |
+| `time` | Date | - | true | - | Timestamp of the sale/transaction |
+| `price` | Number | - | true | - | Selling price of the product |
+| `quantity` | Number | - | true | - | Quantity sold |
+| `netPrice` | Number | - | true | - | Cost price of the product |
+| `profit` | Number | - | false | 0 | Profit per unit |
+| `category` | String | - | true | - | Product category |
+| `totalSales` | Number | - | false | 0 | Total sales amount |
+| `totalProfit` | Number | - | false | 0 | Total profit amount |
+| `location` | String | - | true | - | Geographic location of sale |
+| `createdAt` | Date | - | false | current time | Record creation timestamp |
+| `inventory` | Array | - | false | - | Embedded inventory subdocument (currently unused) |
+
+---
+
+## Table 2: `inventory`
+
+| Column | Data Type | Key Type | Required | Default | Description |
+|--------|-----------|----------|----------|---------|-------------|
+| `_id` | ObjectId | PK | true | auto-generated | MongoDB auto-generated unique identifier |
+| `productName` | String | - | true | - | Name of the product |
+| `category` | String | - | true | - | Product category |
+| `stock` | Number | - | true | - | Available stock quantity |
+| `price` | Number | - | false | 0 | Selling price |
+| `netPrice` | Number | - | false | 0 | Cost price |
+| `updatedAt` | Date | - | false | current time | Last update timestamp |
+
+---
+
+## Notes
+
+- **Database**: MongoDB (MongoDB Atlas)
+- **ODM**: Mongoose
+- **Collections**: The `inventory` table uses a custom collection name via `{ collection: 'inventory' }`
+- **Relationships**: Products reference inventory by `productName` + `category` combination
+- **Embedded Array**: The `inventory` array in the Product schema is currently unused and could be removed
+- **Indexes**: No explicit indexes defined beyond the default `_id` primary key
+
+## Relationships
+
+The project uses a simple two-table structure where:
+1. **`products`** stores individual sales transactions
+2. **`inventory`** maintains the master product catalog with current stock levels and pricing
+
+Products reference inventory items through the combination of `productName` and `category` fields.
+

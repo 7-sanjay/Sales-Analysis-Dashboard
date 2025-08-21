@@ -73,12 +73,37 @@ cd backend
 ```
 ### Install Backend lib
 ```bash
-npm install express mongoose body-parser cors dotenv nodemon
+npm install express mongoose body-parser cors dotenv nodemon nodemailer
 ```
 
 ### Run the Server
 ```bash
 node server.js
 ```
+
+### Email Alerts Configuration
+
+Add these variables to your backend `.env` to enable low-stock email alerts:
+
+```
+# Mongo / existing
+MONGODB_URI=...
+
+# Email alerts
+ALERT_EMAIL_FROM="Alerts <no-reply@example.com>"
+ALERT_EMAIL_TO="you@example.com"
+SMTP_HOST=smtp.example.com
+SMTP_PORT=587
+SMTP_USER=your_smtp_username
+SMTP_PASS=your_smtp_password
+SMTP_SECURE=false
+
+# Optional thresholds and cooldowns
+LOW_STOCK_THRESHOLD=3
+LOW_STOCK_ALERT_COOLDOWN_MS=21600000    # 6 hours
+OUT_OF_STOCK_ALERT_COOLDOWN_MS=86400000 # 24 hours
+```
+
+Alerts are triggered when inventory is created/updated or when stock is reduced. Low stock alerts fire when stock is > 0 and <= threshold; out-of-stock alerts fire when stock is 0. Cooldowns prevent duplicate emails.
 
 

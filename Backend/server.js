@@ -7,6 +7,7 @@ const morgan = require('morgan');
 const Product = require('./models/Product');
 const Inventory = require('./models/Inventory');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
+const { sendLowStockAlert, sendOutOfStockAlert } = require('./services/emailService');
 
 // Create Express app
 const app = express();
@@ -23,17 +24,7 @@ mongoose.connect(process.env.MONGODB_URI)
 .catch(err => console.error('MongoDB connection error:', err));
 
 // --- Mongoose Model ---
-const saleSchema = new mongoose.Schema({
-  name: String,
-  email: String,
-  amount: Number,
-  createdAt: {
-    type: Date,
-    default: Date.now
-  }
-});
-
-const Sale = mongoose.model('Sale', saleSchema);
+// Removed Sale model and schema
 
 // Initialize Gemini
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
@@ -273,17 +264,7 @@ app.delete('/api/products', async (req, res) => {
 });
 
 // --- Sales Routes (keeping for compatibility) ---
-app.post('/api/sales', async (req, res) => {
-  try {
-    console.log('Received data:', req.body);
-    const sale = new Sale(req.body);
-    const saved = await sale.save();
-    res.status(201).json(saved);
-  } catch (err) {
-    console.error('Error saving sale:', err);
-    res.status(500).json({ message: 'Error saving sale data' });
-  }
-});
+// Removed /api/sales endpoint
 
 // --- Inventory Routes ---
 // Get all inventory (products.inventory collection)
@@ -308,6 +289,10 @@ app.post('/api/inventory', async (req, res) => {
       { upsert: true, new: true }
     );
     console.log('Saved inventory document:', inventory);
+    // Notification logic after upsert
+    if (inventory) {
+      await maybeSendInventoryAlerts(inventory);
+    }
     res.status(200).json(inventory);
   } catch (err) {
     console.error('Error updating inventory:', err);
@@ -329,11 +314,48 @@ app.post('/api/inventory/reduce', async (req, res) => {
     inventory.stock -= quantity;
     inventory.updatedAt = new Date();
     await inventory.save();
+    await maybeSendInventoryAlerts(inventory);
     res.status(200).json(inventory);
   } catch (err) {
     res.status(500).json({ message: 'Error reducing inventory', error: err.message });
   }
 });
+
+// --- Notification Helper ---
+async function maybeSendInventoryAlerts(inventoryDoc) {
+  try {
+    const threshold = Number(process.env.LOW_STOCK_THRESHOLD || 3);
+    const now = new Date();
+    const productName = inventoryDoc.productName;
+    const category = inventoryDoc.category;
+    const stock = Number(inventoryDoc.stock || 0);
+
+    // Out of stock alert
+    if (stock === 0) {
+      const lastSent = inventoryDoc.lastOutOfStockAlertAt ? new Date(inventoryDoc.lastOutOfStockAlertAt) : null;
+      const cooldownMs = Number(process.env.OUT_OF_STOCK_ALERT_COOLDOWN_MS || 24 * 60 * 60 * 1000);
+      if (!lastSent || now - lastSent > cooldownMs) {
+        await sendOutOfStockAlert({ productName, category });
+        inventoryDoc.lastOutOfStockAlertAt = now;
+        await inventoryDoc.save();
+      }
+      return;
+    }
+
+    // Low stock alert (<= threshold and > 0)
+    if (stock > 0 && stock <= threshold) {
+      const lastSent = inventoryDoc.lastLowStockAlertAt ? new Date(inventoryDoc.lastLowStockAlertAt) : null;
+      const cooldownMs = Number(process.env.LOW_STOCK_ALERT_COOLDOWN_MS || 6 * 60 * 60 * 1000);
+      if (!lastSent || now - lastSent > cooldownMs) {
+        await sendLowStockAlert({ productName, category, quantity: stock });
+        inventoryDoc.lastLowStockAlertAt = now;
+        await inventoryDoc.save();
+      }
+    }
+  } catch (e) {
+    console.error('Error while sending inventory alert:', e);
+  }
+}
 
 // API endpoint to generate insights
 app.post("/api/generate-insight", async (req, res) => {

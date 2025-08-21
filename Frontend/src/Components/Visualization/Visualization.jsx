@@ -43,6 +43,7 @@ const countryNameMapping = {
   "Japan": "Japan",
   "Brazil": "Brazil",
   "South Africa": "South Africa",
+  "Russia": "Russia",
   // Alternative mappings
   "USA": "United States of America",
   "UK": "United Kingdom",
@@ -1763,32 +1764,85 @@ function VisualizationPage() {
                   {/* Time vs Category Sales */}
                   <div className="chart chart-with-insight" style={{ position: 'relative' }}>
                     <AIButton
-                      onClick={() => handleInsightButton(
-                        'Time vs Category Sales',
-                        'Line',
-                        prepareChartDataForAPI({
-                          labels: productData.map(p => p.time ? new Date(p.time).toLocaleString(undefined, { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : 'Unknown'),
-                          values: dataBy('category', 'totalSales').keys.map(category =>
-                            productData.filter(p => p.category === category).reduce((acc, p) => acc + (p.totalSales || 0), 0)
+                      onClick={() => {
+                        // Build unique sorted dates
+                        const dateSet = new Set();
+                        productData.forEach(p => {
+                          if (p.time) {
+                            const date = new Date(p.time);
+                            const dateKey = date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+                            dateSet.add(dateKey);
+                          }
+                        });
+                        const sortedDates = Array.from(dateSet).sort((a, b) => new Date(a) - new Date(b));
+                        // Build values: for each category, for each date, sum totalSales
+                        const categories = dataBy('category', 'totalSales').keys;
+                        const values = categories.map(category =>
+                          sortedDates.map(dateKey =>
+                            productData.filter(p => {
+                              if (p.category !== category) return false;
+                              if (!p.time) return false;
+                              const d = new Date(p.time);
+                              return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) === dateKey;
+                            }).reduce((acc, p) => acc + (p.totalSales || 0), 0)
                           )
-                        })
-                      )}
+                        );
+                        handleInsightButton(
+                          'Time vs Category Sales',
+                          'Line',
+                          prepareChartDataForAPI({
+                            labels: sortedDates,
+                            values
+                          })
+                        );
+                      }}
                       isLoading={insightLoading && activeInsight === 'Time vs Category Sales'}
                       isActive={activeInsight === 'Time vs Category Sales'}
                     />
                     <h4>🎯 Time vs Category Sales</h4>
                     <Line data={{
-                      labels: productData.map(p => p.time ? new Date(p.time).toLocaleString(undefined, { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : 'Unknown'),
-                      datasets: dataBy('category', 'totalSales').keys.map((category, index) => ({
-                        label: category,
-                        data: safeChartData(productData.filter(p => p.category === category).map(p => p.totalSales)),
-                        borderColor: modernColorPalette[index],
-                        backgroundColor: modernColorPalette[index] + '20',
-                        tension: 0.3,
-                        borderWidth: 2,
-                        pointRadius: 4,
-                        pointHoverRadius: 6
-                      }))
+                      labels: (() => {
+                        // Build unique sorted dates
+                        const dateSet = new Set();
+                        productData.forEach(p => {
+                          if (p.time) {
+                            const date = new Date(p.time);
+                            const dateKey = date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+                            dateSet.add(dateKey);
+                          }
+                        });
+                        return Array.from(dateSet).sort((a, b) => new Date(a) - new Date(b));
+                      })(),
+                      datasets: (() => {
+                        // Build unique sorted dates
+                        const dateSet = new Set();
+                        productData.forEach(p => {
+                          if (p.time) {
+                            const date = new Date(p.time);
+                            const dateKey = date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+                            dateSet.add(dateKey);
+                          }
+                        });
+                        const sortedDates = Array.from(dateSet).sort((a, b) => new Date(a) - new Date(b));
+                        const categories = dataBy('category', 'totalSales').keys;
+                        return categories.map((category, index) => ({
+                          label: category,
+                          data: sortedDates.map(dateKey =>
+                            productData.filter(p => {
+                              if (p.category !== category) return false;
+                              if (!p.time) return false;
+                              const d = new Date(p.time);
+                              return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) === dateKey;
+                            }).reduce((acc, p) => acc + (p.totalSales || 0), 0)
+                          ),
+                          borderColor: modernColorPalette[index],
+                          backgroundColor: modernColorPalette[index] + '20',
+                          tension: 0.3,
+                          borderWidth: 2,
+                          pointRadius: 4,
+                          pointHoverRadius: 6
+                        }));
+                      })()
                     }} options={chartOptions} />
                     {activeInsight === 'Time vs Category Sales' && (
                       <InsightTooltip
