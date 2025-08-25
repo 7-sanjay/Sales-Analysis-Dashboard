@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { auth } from '../../firebase';
 import { confirmPasswordReset, verifyPasswordResetCode } from 'firebase/auth';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import './LoginPage.css';
 
 function PasswordResetPage() {
@@ -13,11 +13,26 @@ function PasswordResetPage() {
   const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const location = useLocation();
 
   useEffect(() => {
-    const oobCode = searchParams.get('oobCode');
+    // Handle both URL formats: custom route and Firebase default
+    let oobCode = searchParams.get('oobCode');
+    
+    // If no oobCode in search params, try to get it from the URL path
     if (!oobCode) {
-      setError('Invalid password reset link.');
+      // Check if we're on the Firebase auth action route
+      if (location.pathname === '/__/auth/action') {
+        oobCode = searchParams.get('oobCode');
+      }
+    }
+
+    console.log('Location:', location.pathname);
+    console.log('Search params:', Object.fromEntries(searchParams.entries()));
+    console.log('OOB Code:', oobCode);
+
+    if (!oobCode) {
+      setError('Invalid password reset link. Missing reset code.');
       setIsLoading(false);
       return;
     }
@@ -25,15 +40,22 @@ function PasswordResetPage() {
     // Verify the password reset code
     verifyPasswordResetCode(auth, oobCode)
       .then((email) => {
+        console.log('Reset code verified for email:', email);
         setIsValidLink(true);
         setIsLoading(false);
       })
       .catch((error) => {
         console.error('Error verifying reset code:', error);
-        setError('This password reset link is invalid or has expired.');
+        if (error.code === 'auth/expired-action-code') {
+          setError('This password reset link has expired. Please request a new one.');
+        } else if (error.code === 'auth/invalid-action-code') {
+          setError('Invalid password reset link.');
+        } else {
+          setError('This password reset link is invalid or has expired.');
+        }
         setIsLoading(false);
       });
-  }, [searchParams]);
+  }, [searchParams, location]);
 
   const handlePasswordReset = async (e) => {
     e.preventDefault();
@@ -48,7 +70,10 @@ function PasswordResetPage() {
       return;
     }
 
-    const oobCode = searchParams.get('oobCode');
+    let oobCode = searchParams.get('oobCode');
+    if (!oobCode) {
+      oobCode = searchParams.get('oobCode');
+    }
     
     try {
       await confirmPasswordReset(auth, oobCode, newPassword);
@@ -119,11 +144,16 @@ function PasswordResetPage() {
             </div>
             <p>{error}</p>
             <button 
-              onClick={() => navigate('/')} 
+              onClick={() => navigate('/reset-password')} 
               className="btn btn-primary animated-button"
             >
-              Back to Login
+              Request New Reset Link
             </button>
+            <div className="mt-3">
+              <span onClick={() => navigate('/')} className="toggle-link-text" style={{cursor: 'pointer'}}>
+                Back to Login
+              </span>
+            </div>
           </div>
         </div>
       </div>
