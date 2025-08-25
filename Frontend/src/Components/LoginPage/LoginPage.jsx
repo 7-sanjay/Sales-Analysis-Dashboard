@@ -43,6 +43,10 @@ function LoginRegister() {
 
   return (
     <div className="login-register-container d-flex justify-content-center align-items-center">
+      <div className="blob"></div>
+      <div className="blob"></div>
+      <div className="blob"></div>
+      <div className="blob"></div>
       <div className="login-register-card shadow-lg p-4">
         <h1 className="dashboard-heading text-center mb-4">SALES ANALYSIS DASHBOARD</h1>
         <h2 className="text-center mb-4">{isRegistering ? 'Register' : 'Login'}</h2>

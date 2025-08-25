@@ -96,6 +96,10 @@ function PasswordResetPage() {
   if (isLoading) {
     return (
       <div className="login-register-container d-flex justify-content-center align-items-center">
+        <div className="blob"></div>
+        <div className="blob"></div>
+        <div className="blob"></div>
+        <div className="blob"></div>
         <div className="login-register-card shadow-lg p-4">
           <h1 className="dashboard-heading text-center mb-4">SALES ANALYSIS DASHBOARD</h1>
           <div className="text-center">
@@ -112,6 +116,10 @@ function PasswordResetPage() {
   if (success) {
     return (
       <div className="login-register-container d-flex justify-content-center align-items-center">
+        <div className="blob"></div>
+        <div className="blob"></div>
+        <div className="blob"></div>
+        <div className="blob"></div>
         <div className="login-register-card shadow-lg p-4">
           <h1 className="dashboard-heading text-center mb-4">SALES ANALYSIS DASHBOARD</h1>
           <h2 className="text-center mb-4">Password Reset Successful!</h2>
@@ -135,6 +143,10 @@ function PasswordResetPage() {
   if (!isValidLink) {
     return (
       <div className="login-register-container d-flex justify-content-center align-items-center">
+        <div className="blob"></div>
+        <div className="blob"></div>
+        <div className="blob"></div>
+        <div className="blob"></div>
         <div className="login-register-card shadow-lg p-4">
           <h1 className="dashboard-heading text-center mb-4">SALES ANALYSIS DASHBOARD</h1>
           <h2 className="text-center mb-4">Invalid Reset Link</h2>
@@ -162,6 +174,10 @@ function PasswordResetPage() {
 
   return (
     <div className="login-register-container d-flex justify-content-center align-items-center">
+      <div className="blob"></div>
+      <div className="blob"></div>
+      <div className="blob"></div>
+      <div className="blob"></div>
       <div className="login-register-card shadow-lg p-4">
         <h1 className="dashboard-heading text-center mb-4">SALES ANALYSIS DASHBOARD</h1>
         <h2 className="text-center mb-4">Set New Password</h2>
