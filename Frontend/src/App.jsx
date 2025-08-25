@@ -4,6 +4,7 @@ import FormPage from './Components/FormPage/FormPage';
 import TableView from './Components/TableView/TableView';
 import Visualization from './Components/Visualization/Visualization';
 import LoginPage from './Components/LoginPage/LoginPage';
+import PasswordResetPage from './Components/LoginPage/PasswordResetPage';
 import InventoryPage from './Components/Inventory/InventoryPage';
 import InventoryVisualization from './Components/InventoryVisualization/InventoryVisualization';
 
@@ -18,6 +19,7 @@ function App() {
     <div>
       <Routes>
         <Route path="/" element={<LoginPage />} />
+        <Route path="/reset-password" element={<PasswordResetPage />} />
         <Route path="/form" element={<FormPage addData={addData} />} />
         <Route path="/table-view" element={<TableView data={data} />} />
         <Route path="/visualization" element={<Visualization data={data} />} />

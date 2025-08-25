@@ -86,40 +86,63 @@ form {
     color: #fff;
     background: none;
     border: none;
-    padding: 0;
-    margin: 0;
     font-size: 1rem;
     text-decoration: underline;
-    transition: color 0.2s;
+    transition: color 0.3s;
 }
 
 .toggle-link-text:hover {
     color: #e0e0e0;
-    text-decoration: underline;
+}
+
+/* Success and Error Messages */
+.text-success {
+    color: #28a745 !important;
+    font-weight: 600;
 }
 
 .text-danger {
-    color: #e74c3c !important;
+    color: #dc3545 !important;
+    font-weight: 600;
 }
 
-@media (max-width: 600px) {
+/* Loading Spinner */
+.spinner-border {
+    width: 3rem;
+    height: 3rem;
+}
+
+/* Icon Styles */
+.fas {
+    font-family: 'Font Awesome 5 Free';
+    font-weight: 900;
+}
+
+.fa-check-circle::before {
+    content: "✓";
+    font-size: 3rem;
+    color: #28a745;
+}
+
+.fa-exclamation-triangle::before {
+    content: "⚠";
+    font-size: 3rem;
+    color: #dc3545;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
     .login-register-card {
-        max-width: 98vw;
-        padding: 1.2rem 0.5rem 1rem 0.5rem;
+        margin: 1rem;
+        padding: 2rem 1.5rem;
     }
+    
     .dashboard-heading {
-        font-size: 1.2rem;
+        font-size: 1.8rem;
     }
+    
     .login-register-card h2 {
-        font-size: 1.2rem;
-    }
-    .form-control {
-        font-size: 1rem;
-        padding: 0.7rem 0.7rem;
-    }
-    .animated-button, .btn-primary {
-        font-size: 1rem;
-        padding: 0.7rem 0;
+        font-size: 1.6rem;
     }
 }
   
