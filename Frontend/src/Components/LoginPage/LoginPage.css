@@ -37,7 +37,7 @@
     letter-spacing: 2px;
     margin-bottom: 10px;
     text-shadow: 0 0 20px rgba(106, 0, 244, 0.3);
-    background: linear-gradient(45deg, #6a00f4, #7d40ff);
+    background: linear-gradient(45deg, #8528ff, #9e6eff);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -245,38 +245,38 @@ form {
 /* Animated background blobs */
 .blob {
   position: absolute;
-  width: 400px;
-  height: 400px;
+  width: 7000px;
+  height: 600px;
   border-radius: 50%;
   filter: blur(120px);
   opacity: 0.7;
-  animation: moveBlob 25s infinite ease-in-out alternate,
-             fadeBlob 15s infinite ease-in-out;
+  animation: moveBlob 60s infinite ease-in-out alternate,
+             fadeBlob 40s infinite ease-in-out;
 }
 
 .blob:nth-child(1) {
-  background: #fc26ff;
-  left: 10%;
-  top: 30%;
+  background: #fc52ff;
+  left: 0%;
+  top: 25%;
   animation-delay: 0s, 0s;
 }
 .blob:nth-child(2) {
   background: #26fcfc;
   left: 55%;
   top: 40%;
-  animation-delay: 5s, 3s;
+  animation-delay: 11.25s, 7.5s;
 }
 .blob:nth-child(3) {
   background: #26ff7a;
-  left: 40%;
-  top: 70%;
-  animation-delay: 10s, 6s;
+  left: 20%;
+  top: 65%;
+  animation-delay: 22.5s, 15s;
 }
 .blob:nth-child(4) {
-  background: #fffc26;
+  background: #fffd84;
   left: 75%;
   top: 20%;
-  animation-delay: 15s, 9s;
+  animation-delay: 33.75s, 22.5s;
 }
 
 @keyframes moveBlob {
@@ -288,9 +288,10 @@ form {
 }
 
 @keyframes fadeBlob {
-  0%, 100% { opacity: 0; }
+  0% { opacity: 0.3; }
   25% { opacity: 0.7; }
   50% { opacity: 0.4; }
   75% { opacity: 0.8; }
+  100% { opacity: 0.3; }
 }
   
