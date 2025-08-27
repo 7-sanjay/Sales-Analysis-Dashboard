@@ -257,7 +257,7 @@ form {
 .blob:nth-child(1) {
   background: #fc52ff;
   left: 0%;
-  top: 25%;
+  top: 15%;
   animation-delay: 0s, 0s;
 }
 .blob:nth-child(2) {
