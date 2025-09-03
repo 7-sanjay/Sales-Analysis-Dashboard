@@ -4,6 +4,9 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const morgan = require('morgan');
+const multer = require('multer');
+const csv = require('csv-parser');
+const fs = require('fs');
 const Product = require('./models/Product');
 const Inventory = require('./models/Inventory');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
@@ -22,6 +25,14 @@ console.log('Connecting to:', process.env.MONGODB_URI);
 mongoose.connect(process.env.MONGODB_URI)
 .then(() => console.log('Connected to MongoDB Atlas'))
 .catch(err => console.error('MongoDB connection error:', err));
+
+// Multer configuration for file uploads
+const upload = multer({ dest: 'uploads/' });
+
+// Ensure uploads directory exists
+if (!fs.existsSync('uploads')) {
+  fs.mkdirSync('uploads');
+}
 
 // --- Mongoose Model ---
 // Removed Sale model and schema
@@ -51,6 +62,125 @@ app.get('/api/products', async (req, res) => {
   } catch (err) {
     console.error('Error fetching products:', err);
     res.status(500).json({ message: 'Error fetching products' });
+  }
+});
+
+// CSV Upload endpoint
+app.post('/api/upload-csv', upload.single('csvFile'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: 'No CSV file uploaded' });
+    }
+
+    const results = [];
+    const errors = [];
+    let successCount = 0;
+    let errorCount = 0;
+
+    // Read and parse CSV file
+    fs.createReadStream(req.file.path)
+      .pipe(csv())
+      .on('data', (data) => {
+        try {
+          // Map CSV columns to Product schema fields
+          const productData = {
+            id: data.id ? Number(data.id) : Date.now(),
+            productName: data.productName || '',
+            time: data.time ? new Date(data.time) : new Date(),
+            price: data.price ? Number(data.price) : 0,
+            quantity: data.quantity ? Number(data.quantity) : 0,
+            netPrice: data.netPrice ? Number(data.netPrice) : 0,
+            profit: data.profit ? Number(data.profit) : 0,
+            category: data.category || '',
+            totalSales: data.totalSales ? Number(data.totalSales) : 0,
+            totalProfit: data.totalProfit ? Number(data.totalProfit) : 0,
+            location: data.location || '',
+            createdAt: data.createdAt ? new Date(data.createdAt) : new Date(),
+            inventory: data.inventory ? JSON.parse(data.inventory) : []
+          };
+
+          // Validate required fields
+          if (!productData.productName || !productData.category || !productData.location) {
+            errors.push({
+              row: errorCount + successCount + 1,
+              error: 'Missing required fields: productName, category, or location',
+              data: data
+            });
+            errorCount++;
+            return;
+          }
+
+          results.push(productData);
+        } catch (parseError) {
+          errors.push({
+            row: errorCount + successCount + 1,
+            error: `Parse error: ${parseError.message}`,
+            data: data
+          });
+          errorCount++;
+        }
+      })
+      .on('end', async () => {
+        try {
+          // Save valid products to database
+          if (results.length > 0) {
+            const savedProducts = await Product.insertMany(results, { ordered: false });
+            successCount = savedProducts.length;
+          }
+
+          // Clean up uploaded file
+          fs.unlinkSync(req.file.path);
+
+          res.json({
+            message: 'CSV upload completed',
+            success: {
+              count: successCount,
+              message: `${successCount} products imported successfully`
+            },
+            errors: {
+              count: errorCount,
+              details: errors
+            },
+            total: successCount + errorCount
+          });
+        } catch (dbError) {
+          // Clean up uploaded file
+          if (fs.existsSync(req.file.path)) {
+            fs.unlinkSync(req.file.path);
+          }
+          
+          console.error('Database error during CSV import:', dbError);
+          res.status(500).json({
+            message: 'Error saving products to database',
+            error: dbError.message,
+            success: { count: 0, message: 'No products imported' },
+            errors: { count: results.length + errorCount, details: errors }
+          });
+        }
+      })
+      .on('error', (error) => {
+        // Clean up uploaded file
+        if (fs.existsSync(req.file.path)) {
+          fs.unlinkSync(req.file.path);
+        }
+        
+        console.error('CSV parsing error:', error);
+        res.status(500).json({
+          message: 'Error parsing CSV file',
+          error: error.message
+        });
+      });
+  } catch (error) {
+    // Clean up uploaded file
+    if (req.file && fs.existsSync(req.file.path)) {
+      fs.unlinkSync(req.file.path);
+    }
+    
+    console.error('CSV upload error:', error);
+    res.status(500).json({
+      message: 'Error processing CSV upload',
+      error: error.message
+    });
   }
 });
 

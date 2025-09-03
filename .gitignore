@@ -33,6 +33,8 @@ Frontend/.parcel-cache/
 Backend/build/
 Backend/dist/
 Backend/coverage/
+Backend/uploads/
+Backend/sample_products.csv
 
 # IDE and editor files
 .vscode/

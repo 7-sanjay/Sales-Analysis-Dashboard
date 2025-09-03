@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
+import CSVUpload from './CSVUpload';
 import './FormPage.css';
 
 function FormPage() {
@@ -478,6 +479,18 @@ function FormPage() {
                         </button>
                     </div>
                 </form>
+                
+                {/* CSV Upload Section */}
+                <CSVUpload 
+                    onUploadSuccess={(result) => {
+                        console.log('CSV upload successful:', result);
+                        // Optionally refresh data or show success message
+                    }}
+                    onUploadError={(errors) => {
+                        console.log('CSV upload errors:', errors);
+                        // Optionally show error message
+                    }}
+                />
             </div>
         </div>
     );
