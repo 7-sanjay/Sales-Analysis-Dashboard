@@ -1,6 +1,6 @@
 # 📊 Sales Analysis Dashboard
 
-A full-stack MERN (MongoDB, Express, React, Node.js) project for tracking and analyzing sales data with beautiful data visualization using **Chart.js** and AI-powered insights from **Gemini**.
+A comprehensive full-stack MERN (MongoDB, Express, React, Node.js) application for tracking and analyzing sales data with beautiful data visualization using **Chart.js** and AI-powered insights from **Gemini**.
 
 ![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)
 ![Express.js](https://img.shields.io/badge/Express.js-000000?style=for-the-badge&logo=express&logoColor=white)
@@ -13,15 +13,35 @@ A full-stack MERN (MongoDB, Express, React, Node.js) project for tracking and an
 
 ## 🚀 Features
 
-- 📈 **Interactive Sales Data Charts**: Visualize sales, profit, and inventory trends with dynamic Chart.js graphs.
-- 🤖 **AI-Generated Insights**: Instantly get smart, concise business insights for your charts using Google Gemini AI.
-- 🗃️ **Cloud Database**: All data is securely stored and managed in MongoDB Atlas.
-- 🧮 **Inventory Management**: Add, update, and track product inventory in real time.
-- 🔐 **Secure & Modular Backend**: Built with Express.js and Node.js for robust API and data handling.
-- ⚛️ **Modern UI**: Responsive, user-friendly interface built with React.js.
-- 🌐 **RESTful API**: Smooth integration between frontend and backend.
-- 📊 **Real-Time Analytics**: Instantly see the impact of your data changes in charts and tables.
-- 🔥 **Easy Deployment**: Ready for Vercel (frontend) and Render (backend) cloud deployment.
+### 📊 **Data Management**
+- **Product Management**: Add, edit, and track product sales data with comprehensive form validation
+- **CSV Import**: Bulk import products from CSV files with drag-and-drop functionality
+- **Inventory Management**: Real-time inventory tracking with stock level monitoring
+- **Data Visualization**: Interactive charts and graphs for sales analysis
+
+### 🎯 **User Interface**
+- **Responsive Design**: Works seamlessly on desktop, tablet, and mobile devices
+- **Modern UI**: Clean, intuitive interface with gradient designs and smooth animations
+- **Side-by-Side Layout**: Form and CSV upload on the same page for efficient workflow
+- **Table View**: Comprehensive data table with sorting, filtering, and bulk operations
+
+### 🔧 **Advanced Functionality**
+- **Row Selection**: Select individual or multiple rows for bulk operations
+- **Bulk Delete**: Delete selected rows with confirmation dialogs
+- **Real-time Updates**: Instant data synchronization across all views
+- **Error Handling**: Comprehensive error handling with user-friendly messages
+
+### 📈 **Analytics & Insights**
+- **Interactive Charts**: Dynamic visualizations using Chart.js
+- **AI-Powered Insights**: Smart business insights using Google Gemini AI
+- **Sales Analytics**: Track sales, profit, and inventory trends
+- **Export Functionality**: Download data as CSV files
+
+### 🛡️ **Security & Performance**
+- **Cloud Database**: Secure data storage with MongoDB Atlas
+- **RESTful API**: Well-structured backend API with Express.js
+- **Input Validation**: Comprehensive form validation and data sanitization
+- **Optimized Performance**: Efficient data handling and rendering
 
 ---
 
@@ -29,12 +49,39 @@ A full-stack MERN (MongoDB, Express, React, Node.js) project for tracking and an
 
 ```mermaid
 flowchart TD
-  A[User] -->|Login & Data Entry| B[Modern React UI]
-  B -->|Sends/Fetches Data| C[Express.js API]
-  C -->|Stores/Retrieves| D[MongoDB Atlas]
-  B -->|Visualizes| E[Chart.js]
+  A[User Interface] -->|Data Entry| B[React Frontend]
+  B -->|API Calls| C[Express.js Backend]
+  C -->|Data Storage| D[MongoDB Atlas]
+  B -->|Visualization| E[Chart.js]
   B -->|AI Insights| F[Gemini AI]
-  F -->|Insight Response| B
+  F -->|Smart Analysis| B
+  
+  subgraph "Frontend Features"
+    B1[Product Form]
+    B2[CSV Upload]
+    B3[Table View]
+    B4[Inventory Management]
+    B5[Data Visualization]
+  end
+  
+  subgraph "Backend Services"
+    C1[Product API]
+    C2[Inventory API]
+    C3[CSV Processing]
+    C4[File Upload]
+  end
+  
+  B --> B1
+  B --> B2
+  B --> B3
+  B --> B4
+  B --> B5
+  
+  C --> C1
+  C --> C2
+  C --> C3
+  C --> C4
+  
   style F fill:#f9f,stroke:#333,stroke-width:2px
   style E fill:#ffb,stroke:#333,stroke-width:2px
   style D fill:#bfb,stroke:#333,stroke-width:2px
@@ -47,63 +94,194 @@ flowchart TD
 
 ## 🛠️ Local Development Setup
 
-> **Note**: Make sure [Node.js](https://nodejs.org/) and [MongoDB Atlas](https://www.mongodb.com/cloud/atlas) are set up. Use `.env` to securely store DB URI.
+> **Prerequisites**: [Node.js](https://nodejs.org/) and [MongoDB Atlas](https://www.mongodb.com/cloud/atlas) account
 
 ### 1. Clone the Repository
 
 ```bash
 git clone https://github.com/7-sanjay/Sales-Analysis-Dashboard.git
+cd Sales-Analysis-Dashboard
+```
 
-```
-### Open Frontend
+### 2. Backend Setup
+
 ```bash
-cd frontend
+cd Backend
+npm install
 ```
-### Install necessary libraries
-```bash
-npm install axios firebase react-chartjs-2 
+
+Create a `.env` file in the Backend directory:
+
+```env
+MONGODB_URI=your_mongodb_atlas_connection_string
+PORT=5000
 ```
-### Run Frontend
+
+### 3. Frontend Setup
+
 ```bash
+cd Frontend
+npm install
+```
+
+Create a `.env` file in the Frontend directory:
+
+```env
+REACT_APP_API_BASE_URL=http://localhost:5000
+```
+
+### 4. Run the Application
+
+**Start Backend Server:**
+```bash
+cd Backend
 npm start
 ```
-### Open Backend
+
+**Start Frontend Development Server:**
 ```bash
-cd backend
-```
-### Install Backend lib
-```bash
-npm install express mongoose body-parser cors dotenv nodemon nodemailer
+cd Frontend
+npm start
 ```
 
-### Run the Server
-```bash
-node server.js
+The application will be available at:
+- **Frontend**: http://localhost:3000
+- **Backend API**: http://localhost:5000
+
+---
+
+## 📁 Project Structure
+
+```
+Sales-Analysis-Dashboard/
+├── Backend/
+│   ├── models/
+│   │   ├── Product.js          # Product data model
+│   │   └── Inventory.js        # Inventory data model
+│   ├── routes/
+│   │   ├── products.js         # Product API routes
+│   │   └── inventory.js        # Inventory API routes
+│   ├── uploads/                # Temporary CSV file storage
+│   ├── server.js               # Main server file
+│   └── package.json
+├── Frontend/
+│   ├── src/
+│   │   ├── Components/
+│   │   │   ├── FormPage/       # Product form and CSV upload
+│   │   │   ├── TableView/      # Data table with bulk operations
+│   │   │   ├── Inventory/      # Inventory management
+│   │   │   └── Visualization/  # Charts and analytics
+│   │   ├── App.js
+│   │   └── index.js
+│   └── package.json
+└── README.md
 ```
 
-### Email Alerts Configuration
+---
 
-Add these variables to your backend `.env` to enable low-stock email alerts:
+## 🎯 Key Features Explained
 
-```
-# Mongo / existing
-MONGODB_URI=...
+### 📝 **Product Management**
+- **Add Products**: Comprehensive form with category selection, product details, and automatic calculations
+- **Edit Products**: Update existing product information with real-time inventory adjustments
+- **Bulk Import**: Upload multiple products via CSV files with validation and error reporting
 
-# Email alerts
-ALERT_EMAIL_FROM="Alerts <no-reply@example.com>"
-ALERT_EMAIL_TO="you@example.com"
-SMTP_HOST=smtp.example.com
-SMTP_PORT=587
-SMTP_USER=your_smtp_username
-SMTP_PASS=your_smtp_password
-SMTP_SECURE=false
+### 📊 **Table View**
+- **Responsive Table**: All columns fit within screen width without horizontal scrolling
+- **Row Selection**: Checkbox-based selection for individual or bulk operations
+- **Bulk Delete**: Delete multiple selected rows with confirmation
+- **Export Data**: Download table data as CSV files
 
-# Optional thresholds and cooldowns
-LOW_STOCK_THRESHOLD=3
-LOW_STOCK_ALERT_COOLDOWN_MS=21600000    # 6 hours
-OUT_OF_STOCK_ALERT_COOLDOWN_MS=86400000 # 24 hours
-```
+### 📦 **Inventory Management**
+- **Stock Tracking**: Real-time inventory monitoring with visual indicators
+- **Category Filtering**: Filter products by category for easy management
+- **Stock Updates**: Edit product prices, net prices, and stock quantities
+- **Low Stock Alerts**: Visual indicators for products with low inventory
 
-Alerts are triggered when inventory is created/updated or when stock is reduced. Low stock alerts fire when stock is > 0 and <= threshold; out-of-stock alerts fire when stock is 0. Cooldowns prevent duplicate emails.
+### 📈 **Data Visualization**
+- **Interactive Charts**: Dynamic graphs showing sales trends and analytics
+- **AI Insights**: Smart analysis and recommendations using Gemini AI
+- **Real-time Updates**: Charts update automatically when data changes
 
+---
 
+## 🔧 API Endpoints
+
+### Products
+- `GET /api/products` - Get all products
+- `POST /api/products` - Create new product
+- `PUT /api/products/:id` - Update product
+- `DELETE /api/products/:id` - Delete single product
+- `DELETE /api/products` - Delete all products
+- `POST /api/upload-csv` - Upload and process CSV file
+
+### Inventory
+- `GET /api/inventory` - Get all inventory items
+- `POST /api/inventory` - Add/update inventory item
+- `PUT /api/inventory/:id` - Update inventory item
+- `DELETE /api/inventory/:id` - Delete inventory item
+- `POST /api/inventory/reduce` - Reduce stock quantity
+
+---
+
+## 🚀 Deployment
+
+### Frontend (Vercel)
+1. Connect your GitHub repository to Vercel
+2. Set environment variables in Vercel dashboard
+3. Deploy automatically on push to main branch
+
+### Backend (Render/Railway)
+1. Connect your GitHub repository
+2. Set environment variables (MONGODB_URI, PORT)
+3. Deploy and get your backend URL
+4. Update frontend environment variables with backend URL
+
+---
+
+## 🛡️ Security Features
+
+- **Input Validation**: All user inputs are validated and sanitized
+- **Error Handling**: Comprehensive error handling with user-friendly messages
+- **File Upload Security**: Secure CSV file processing with validation
+- **Database Security**: MongoDB Atlas with secure connection strings
+
+---
+
+## 📱 Responsive Design
+
+The application is fully responsive and optimized for:
+- **Desktop**: Full feature set with side-by-side layouts
+- **Tablet**: Adapted layouts with touch-friendly interfaces
+- **Mobile**: Stacked layouts with optimized touch interactions
+
+---
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
+
+---
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+---
+
+## 👨‍💻 Author
+
+**Sanjay** - [GitHub](https://github.com/7-sanjay)
+
+---
+
+## 🙏 Acknowledgments
+
+- [Chart.js](https://www.chartjs.org/) for beautiful data visualizations
+- [Google Gemini AI](https://ai.google.dev/) for intelligent insights
+- [MongoDB Atlas](https://www.mongodb.com/cloud/atlas) for cloud database
+- [React](https://reactjs.org/) and [Express.js](https://expressjs.com/) communities
