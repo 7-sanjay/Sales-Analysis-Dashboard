@@ -115,22 +115,7 @@
   background: #5b21b6;
 }
 
-/* Reduce button styling */
-.inventory-reduce-btn {
-  background: #f59e42;
-  color: #fff;
-  border: none;
-  border-radius: 6px;
-  padding: 6px 12px;
-  margin-left: 6px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background 0.2s;
-}
 
-.inventory-reduce-btn:hover {
-  background: #d97706;
-}
 
 /* Stock level color highlighting */
 .low-stock {

@@ -316,9 +316,11 @@ function FormPage() {
 
     return (
         <div className="form-outer-wrapper">
-            <div className="form-container">
-                <h2 className="form-title">{isEditing ? "Edit Product Data" : "Add Product Data"}</h2>
-                <form onSubmit={handleSubmit}>
+            <div className="form-main-layout">
+                <div className="form-left-section">
+                    <div className="form-container">
+                        <h2 className="form-title">{isEditing ? "Edit Product Data" : "Add Product Data"}</h2>
+                        <form onSubmit={handleSubmit}>
                     <div className="form-row">
                         <div className="form-field-group">
                             <label htmlFor="category" style={{ display: 'block', fontWeight: 600, marginBottom: 4 }}>Category:</label>
@@ -477,20 +479,24 @@ function FormPage() {
                         >
                             View as Table
                         </button>
+                        </div>
+                    </form>
                     </div>
-                </form>
+                </div>
                 
                 {/* CSV Upload Section */}
-                <CSVUpload 
-                    onUploadSuccess={(result) => {
-                        console.log('CSV upload successful:', result);
-                        // Optionally refresh data or show success message
-                    }}
-                    onUploadError={(errors) => {
-                        console.log('CSV upload errors:', errors);
-                        // Optionally show error message
-                    }}
-                />
+                <div className="form-right-section">
+                    <CSVUpload 
+                        onUploadSuccess={(result) => {
+                            console.log('CSV upload successful:', result);
+                            // Optionally refresh data or show success message
+                        }}
+                        onUploadError={(errors) => {
+                            console.log('CSV upload errors:', errors);
+                            // Optionally show error message
+                        }}
+                    />
+                </div>
             </div>
         </div>
     );

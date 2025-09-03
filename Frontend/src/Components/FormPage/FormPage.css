@@ -13,6 +13,25 @@ body, #root, .App {
   align-items: center;
   justify-content: center;
   background: #f8f9fa;
+  padding: 20px;
+}
+
+.form-main-layout {
+  display: flex;
+  gap: 30px;
+  max-width: 1400px;
+  width: 100%;
+  align-items: flex-start;
+}
+
+.form-left-section {
+  flex: 1;
+  max-width: 600px;
+}
+
+.form-right-section {
+  flex: 1;
+  max-width: 500px;
 }
 
 .form-container {
@@ -162,7 +181,24 @@ label {
   min-width: 0;
 }
 
+@media (max-width: 1200px) {
+  .form-main-layout {
+    flex-direction: column;
+    gap: 20px;
+  }
+  .form-left-section,
+  .form-right-section {
+    max-width: 100%;
+  }
+}
+
 @media (max-width: 700px) {
+  .form-outer-wrapper {
+    padding: 10px;
+  }
+  .form-main-layout {
+    gap: 15px;
+  }
   form {
     display: flex;
     flex-direction: column;

@@ -50,7 +50,6 @@ function InventoryPage() {
     const [message, setMessage] = useState('');
     const [editRow, setEditRow] = useState(null);
     const [editValues, setEditValues] = useState({ price: 0, netPrice: 0, stock: 0 });
-    const [reduceQtyMap, setReduceQtyMap] = useState({});
     const [filterCategory, setFilterCategory] = useState('');
     const [refreshing, setRefreshing] = useState(false);
     const navigate = useNavigate();
@@ -76,28 +75,7 @@ function InventoryPage() {
         }
     };
 
-    const handleReduceStock = async (productName, category) => {
-        const key = category + '|' + productName;
-        const qty = reduceQtyMap[key];
-        if (!qty || isNaN(qty) || Number(qty) <= 0) {
-            alert('Enter valid quantity to reduce.');
-            return;
-        }
-        if (!window.confirm(`Reduce stock of ${productName} by ${qty}?`)) return;
-        const res = await fetch(`${API_BASE_URL}/api/inventory/reduce`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ productName, category, quantity: Number(qty) })
-        });
-        const data = await res.json();
-        if (res.ok) {
-            setMessage('Stock reduced!');
-            fetchInventory();
-            setReduceQtyMap(prev => ({ ...prev, [key]: '' }));
-        } else {
-            alert(data.message || 'Error reducing stock');
-        }
-    };
+
 
     const handleEdit = (row) => {
         setEditRow(row.category + '|' + row.productName);
@@ -273,9 +251,6 @@ function InventoryPage() {
                         handleEditChange={handleEditChange}
                         handleEdit={handleEdit}
                         handleSave={handleSave}
-                        reduceQtyMap={reduceQtyMap}
-                        setReduceQtyMap={setReduceQtyMap}
-                        handleReduceStock={handleReduceStock}
                     />
                 </div>
             </div>
@@ -284,7 +259,7 @@ function InventoryPage() {
 }
 
 // Table as a separate component
-function InventoryTable({ displayRows, editRow, editValues, handleEditChange, handleEdit, handleSave, reduceQtyMap, setReduceQtyMap, handleReduceStock }) {
+function InventoryTable({ displayRows, editRow, editValues, handleEditChange, handleEdit, handleSave }) {
     // Function to determine stock level color
     const getStockLevelColor = (stock) => {
         const stockNum = Number(stock);
@@ -310,7 +285,6 @@ function InventoryTable({ displayRows, editRow, editValues, handleEditChange, ha
                     <th>Price</th>
                     <th>Net Price</th>
                     <th>Stock</th>
-                    <th>Reduce</th>
                     <th>Edit</th>
                 </tr>
             </thead>
@@ -342,20 +316,6 @@ function InventoryTable({ displayRows, editRow, editValues, handleEditChange, ha
                                     <span className="stock-display">
                                         {stockIndicator} {item.stock}
                                     </span>
-                                )}
-                            </td>
-                            <td>
-                                {!isEditing && (
-                                    <>
-                                        <input
-                                            type="number"
-                                            value={reduceQtyMap[key] || ''}
-                                            onChange={(e) => setReduceQtyMap(prev => ({ ...prev, [key]: e.target.value }))}
-                                            placeholder="Qty"
-                                            className="inventory-input"
-                                        />
-                                        <button onClick={() => handleReduceStock(item.productName, item.category)} className="inventory-reduce-btn">Reduce</button>
-                                    </>
                                 )}
                             </td>
                             <td>

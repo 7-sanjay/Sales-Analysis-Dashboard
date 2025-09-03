@@ -94,21 +94,7 @@ const CSVUpload = ({ onUploadSuccess, onUploadError }) => {
         }
     };
 
-    const downloadTemplate = () => {
-        const template = [
-            'id,productName,time,price,quantity,netPrice,profit,category,totalSales,totalProfit,location,createdAt,inventory',
-            '1752339336557,Xbox Series X,2025-06-29T03:55:36.557+00:00,52999,2,46370,6629,Gaming Consoles,105998,13258,India,2025-07-12T16:56:30.455+00:00,[]',
-            '1752339336558,PlayStation 5,2025-06-29T04:00:00.000+00:00,49999,1,43750,6249,Gaming Consoles,49999,6249,India,2025-07-12T16:57:00.000+00:00,[]'
-        ].join('\n');
-        
-        const blob = new Blob([template], { type: 'text/csv' });
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'product_template.csv';
-        a.click();
-        window.URL.revokeObjectURL(url);
-    };
+
 
     const clearResult = () => {
         setUploadResult(null);
@@ -160,10 +146,6 @@ const CSVUpload = ({ onUploadSuccess, onUploadError }) => {
                     >
                         {uploading ? 'Uploading...' : 'Upload CSV'}
                     </button>
-                    
-                    <button onClick={downloadTemplate} className="template-button">
-                        Download Template
-                    </button>
                 </div>
             </div>
 
@@ -214,17 +196,7 @@ const CSVUpload = ({ onUploadSuccess, onUploadError }) => {
                 </div>
             )}
 
-            <div className="csv-requirements">
-                <h4>CSV Requirements:</h4>
-                <ul>
-                    <li>File must be in CSV format (.csv extension)</li>
-                    <li>Required columns: productName, category, location</li>
-                    <li>Optional columns: id, time, price, quantity, netPrice, profit, totalSales, totalProfit, createdAt, inventory</li>
-                    <li>Date fields should be in ISO 8601 format (e.g., 2025-06-29T03:55:36.557+00:00)</li>
-                    <li>Numeric fields should contain only numbers</li>
-                    <li>Inventory field should be a valid JSON array (e.g., [])</li>
-                </ul>
-            </div>
+
         </div>
     );
 };
