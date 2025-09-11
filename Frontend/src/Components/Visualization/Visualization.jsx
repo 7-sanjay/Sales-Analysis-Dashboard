@@ -103,6 +103,9 @@ function VisualizationPage() {
   const [activeInsight, setActiveInsight] = useState(null);
   const [monthlyTrendMetric, setMonthlyTrendMetric] = useState('revenue');
   const [top5View, setTop5View] = useState('products'); // 'products' or 'categories'
+  const [quantityCategoryFilter, setQuantityCategoryFilter] = useState('all');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -117,7 +120,7 @@ function VisualizationPage() {
   const navigationSections = [
     {
       id: 'kpis',
-      title: '📊 Advanced Insights & KPIs',
+      title: '📊 Prediction & Trends',
       icon: '📊'
     },
     {
@@ -318,21 +321,39 @@ function VisualizationPage() {
     return ranges;
   };
 
-  const priceRanges = getDynamicPriceRanges(productData);
+  const filteredProductData = React.useMemo(() => {
+    if (!dateFrom && !dateTo) return productData;
+    const from = dateFrom ? new Date(dateFrom) : null;
+    const to = dateTo ? new Date(dateTo) : null;
+    return (productData || []).filter(item => {
+      if (!item.time) return false;
+      const t = new Date(item.time);
+      if (isNaN(t)) return false;
+      if (from && t < from) return false;
+      if (to) {
+        const end = new Date(to);
+        end.setHours(23,59,59,999);
+        if (t > end) return false;
+      }
+      return true;
+    });
+  }, [productData, dateFrom, dateTo]);
+
+  const priceRanges = getDynamicPriceRanges(filteredProductData);
   const priceHistogramData = priceRanges.map(range => ({
     label: range.label,
-    count: productData.filter(item => (item.price || 0) >= range.min && (item.price || 0) < range.max).length
+    count: filteredProductData.filter(item => (item.price || 0) >= range.min && (item.price || 0) < range.max).length
   })).filter(item => item.count > 0); // Only show ranges with data
 
   // Enhanced dataBy function with better error handling
   const dataBy = (key, valueKey) => {
-    if (!productData || !Array.isArray(productData) || productData.length === 0) {
+    if (!filteredProductData || !Array.isArray(filteredProductData) || filteredProductData.length === 0) {
       console.log('dataBy: No product data available');
       return { keys: [], values: [] };
     }
     
     // Filter out null/undefined values and ensure we have valid data
-    const validData = productData.filter(item => 
+    const validData = filteredProductData.filter(item => 
       item[key] && item[key] !== null && item[key] !== undefined &&
       (item[valueKey] !== null && item[valueKey] !== undefined)
     );
@@ -353,13 +374,13 @@ function VisualizationPage() {
   };
 
   const averageBy = (key, valueKey) => {
-    if (!productData || !Array.isArray(productData) || productData.length === 0) {
+    if (!filteredProductData || !Array.isArray(filteredProductData) || filteredProductData.length === 0) {
       console.log('averageBy: No product data available');
       return { keys: [], values: [] };
     }
     
     // Filter out null/undefined values and ensure we have valid data
-    const validData = productData.filter(item => 
+    const validData = filteredProductData.filter(item => 
       item[key] && item[key] !== null && item[key] !== undefined &&
       (item[valueKey] !== null && item[valueKey] !== undefined)
     );
@@ -454,7 +475,7 @@ function VisualizationPage() {
   // KPI Calculations
   // Best Selling Product (by overall quantity sold across all entries)
   const productQuantityMap = {};
-  productData.forEach(item => {
+  filteredProductData.forEach(item => {
     if (!item.productName) return;
     productQuantityMap[item.productName] = (productQuantityMap[item.productName] || 0) + (item.quantity || 0);
   });
@@ -480,16 +501,16 @@ function VisualizationPage() {
   const mostPurchasedCountry = mostPurchasedCountryData.keys[mostPurchasedCountryData.values.indexOf(Math.max(...mostPurchasedCountryData.values))];
 
   // Top 5 products by sales
-  const topProducts = [...productData]
+  const topProducts = [...filteredProductData]
     .sort((a, b) => b.totalSales - a.totalSales)
     .slice(0, 5);
 
   // Peak Sales Hour (by total sales)
   let peakSalesHour = 'N/A';
-  if (productData.length > 0) {
+  if (filteredProductData.length > 0) {
     // Try to extract hour from the 'time' field (assuming it's a string or Date)
     const hourSales = {};
-    productData.forEach(item => {
+    filteredProductData.forEach(item => {
       if (item.time) {
         let hour = null;
         if (typeof item.time === 'string') {
@@ -528,9 +549,9 @@ function VisualizationPage() {
 
   // Calculate sums for last 3 days and previous 3 days
   function sumByTimeWindow(key) {
-    const last3 = productData.filter(p => isInRange(p, threeDaysAgo, now)).reduce((acc, p) => acc + (p[key] || 0), 0);
-    const prev3 = productData.filter(p => isInRange(p, sixDaysAgo, threeDaysAgo)).reduce((acc, p) => acc + (p[key] || 0), 0);
-    const total = productData.reduce((acc, p) => acc + (p[key] || 0), 0);
+    const last3 = filteredProductData.filter(p => isInRange(p, threeDaysAgo, now)).reduce((acc, p) => acc + (p[key] || 0), 0);
+    const prev3 = filteredProductData.filter(p => isInRange(p, sixDaysAgo, threeDaysAgo)).reduce((acc, p) => acc + (p[key] || 0), 0);
+    const total = filteredProductData.reduce((acc, p) => acc + (p[key] || 0), 0);
     return { last3, prev3, total };
   }
 
@@ -613,7 +634,7 @@ function VisualizationPage() {
   };
 
   // Before KPI cards
-  console.log('KPI productData:', productData);
+  console.log('KPI productData:', filteredProductData);
 
   // Helper for safe sparkline data
   function safeSparklineData(arr) {
@@ -636,6 +657,113 @@ function VisualizationPage() {
     });
     const sortedMonths = Object.keys(monthly).sort((a, b) => new Date(a) - new Date(b));
     return { labels: sortedMonths, values: sortedMonths.map(m => monthly[m]) };
+  }
+
+  // Build Category x Month matrix for a heatmap (using totalSales by default)
+  function computeCategoryMonthMatrix(valueKey = 'totalSales') {
+    const categoriesSet = new Set();
+    const monthsSet = new Set();
+    (filteredProductData || []).forEach(item => {
+      if (!item.time) return;
+      const monthKey = new Date(item.time).toLocaleDateString('en-US', { year: 'numeric', month: 'short' });
+      monthsSet.add(monthKey);
+      if (item.category) categoriesSet.add(item.category);
+    });
+    const months = Array.from(monthsSet).sort((a, b) => new Date(a) - new Date(b));
+    const categories = Array.from(categoriesSet);
+    const indexByCat = Object.fromEntries(categories.map((c, i) => [c, i]));
+    const indexByMonth = Object.fromEntries(months.map((m, i) => [m, i]));
+    const matrix = Array.from({ length: categories.length }, () => Array.from({ length: months.length }, () => 0));
+    (filteredProductData || []).forEach(item => {
+      if (!item.time || !item.category) return;
+      const monthKey = new Date(item.time).toLocaleDateString('en-US', { year: 'numeric', month: 'short' });
+      const r = indexByCat[item.category];
+      const c = indexByMonth[monthKey];
+      if (r != null && c != null) {
+        matrix[r][c] += item[valueKey] || 0;
+      }
+    });
+    return { categories, months, matrix };
+  }
+
+  // Linear regression util (least squares)
+  function linearRegression(xs, ys) {
+    if (!xs || !ys || xs.length !== ys.length || xs.length < 2) {
+      return { slope: 0, intercept: ys && ys.length ? ys[ys.length - 1] : 0 };
+    }
+    const n = xs.length;
+    const sumX = xs.reduce((a, b) => a + b, 0);
+    const sumY = ys.reduce((a, b) => a + b, 0);
+    const sumXY = xs.reduce((acc, x, i) => acc + x * ys[i], 0);
+    const sumXX = xs.reduce((acc, x) => acc + x * x, 0);
+    const denom = n * sumXX - sumX * sumX;
+    if (denom === 0) return { slope: 0, intercept: sumY / n };
+    const slope = (n * sumXY - sumX * sumY) / denom;
+    const intercept = (sumY - slope * sumX) / n;
+    return { slope, intercept };
+  }
+
+  // Forecast next k months from monthly totals using simple linear regression
+  function forecastNextMonths(monthLabels, monthValues, k = 3) {
+    const xs = monthValues.map((_, i) => i);
+    const { slope, intercept } = linearRegression(xs, monthValues);
+    const forecasts = [];
+    const nextLabels = [];
+    // Parse last month and add sequential months
+    const lastLabel = monthLabels[monthLabels.length - 1];
+    const startDate = lastLabel ? new Date(lastLabel) : new Date();
+    const d = new Date(startDate.getTime());
+    for (let i = 1; i <= k; i++) {
+      d.setMonth(d.getMonth() + 1);
+      nextLabels.push(d.toLocaleDateString('en-US', { year: 'numeric', month: 'short' }));
+      const x = xs.length - 1 + i;
+      forecasts.push(slope * x + intercept);
+    }
+    return { nextLabels, forecasts };
+  }
+
+  // Compute per-product trend (slope of metric over time index)
+  function computeProductTrends(metricKey = 'quantity') {
+    const byProduct = {};
+    (filteredProductData || []).forEach(item => {
+      if (!item.productName || !item.time) return;
+      const t = new Date(item.time);
+      if (isNaN(t)) return;
+      const key = item.productName;
+      if (!byProduct[key]) byProduct[key] = [];
+      byProduct[key].push({ t, v: item[metricKey] || 0 });
+    });
+    const trends = Object.entries(byProduct).map(([name, arr]) => {
+      const sorted = arr.sort((a, b) => a.t - b.t);
+      const ys = sorted.map(p => p.v);
+      const xs = sorted.map((_, i) => i);
+      const { slope } = linearRegression(xs, ys);
+      return { name, slope };
+    });
+    const rising = trends.filter(t => t.slope > 0).sort((a, b) => b.slope - a.slope).slice(0, 5);
+    const declining = trends.filter(t => t.slope < 0).sort((a, b) => a.slope - b.slope).slice(0, 5);
+    return { rising, declining };
+  }
+
+  // Price elasticity (log-log slope between price and quantity), grouped by category
+  function computePriceElasticityByCategory() {
+    const byCat = {};
+    (productData || []).forEach(item => {
+      const cat = item.category || 'Unknown';
+      if (!byCat[cat]) byCat[cat] = [];
+      if (item.price && item.quantity) {
+        byCat[cat].push({ price: item.price, quantity: item.quantity });
+      }
+    });
+    const elasticity = Object.entries(byCat).map(([cat, arr]) => {
+      const points = arr.filter(p => p.price > 0 && p.quantity > 0);
+      if (points.length < 2) return { category: cat, e: 0 };
+      const xs = points.map(p => Math.log(p.price));
+      const ys = points.map(p => Math.log(p.quantity));
+      const { slope } = linearRegression(xs, ys);
+      return { category: cat, e: slope };
+    });
+    return elasticity;
   }
 
   const topCategories = (() => {
@@ -748,13 +876,68 @@ function VisualizationPage() {
 
         {/* Main Content Area */}
         <div className={`main-content ${navVisible ? 'with-nav' : 'full-width'}`}>
+          {/* Global Date Filter */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, justifyContent: 'flex-end' }}>
+            <label style={{ fontSize: 12, color: '#556', opacity: 0.9, marginRight: 4 }}>From</label>
+            <input
+              type="date"
+              value={dateFrom}
+              onChange={e => setDateFrom(e.target.value)}
+              style={{
+                padding: '0.3rem 0.7rem',
+                borderRadius: 6,
+                fontSize: '1rem',
+                fontWeight: 500,
+                background: '#fff',
+                border: '1.2px solid #e2e8f0',
+                color: '#333',
+                outline: 'none',
+                minWidth: 160
+              }}
+            />
+            <label style={{ fontSize: 12, color: '#556', opacity: 0.9, marginLeft: 6, marginRight: 4 }}>To</label>
+            <input
+              type="date"
+              value={dateTo}
+              onChange={e => setDateTo(e.target.value)}
+              style={{
+                padding: '0.3rem 0.7rem',
+                borderRadius: 6,
+                fontSize: '1rem',
+                fontWeight: 500,
+                background: '#fff',
+                border: '1.2px solid #e2e8f0',
+                color: '#333',
+                outline: 'none',
+                minWidth: 160
+              }}
+            />
+            {(dateFrom || dateTo) && (
+              <button
+                onClick={() => { setDateFrom(''); setDateTo(''); }}
+                style={{
+                  padding: '0.3rem 0.7rem',
+                  borderRadius: 6,
+                  fontSize: '0.95rem',
+                  fontWeight: 500,
+                  background: '#fff',
+                  border: '1.2px solid #e2e8f0',
+                  color: '#333',
+                  outline: 'none',
+                  cursor: 'pointer'
+                }}
+              >
+                Clear
+              </button>
+            )}
+          </div>
           {/* KPI Cards - Only show in Home section */}
           {activeSection === 'home' && (
             <div className="kpi-cards">
               <div className="kpi-card">
                 <h3>💰 Total Revenue</h3>
-                <p>₹{totalRevenue.toLocaleString('en-IN')}</p>
-                <Sparklines data={safeSparklineData(productData.map(p => p.totalSales || 0))} height={30} margin={5}>
+                <p>₹{filteredProductData.reduce((acc, p) => acc + (p.totalSales || 0), 0).toLocaleString('en-IN')}</p>
+                <Sparklines data={safeSparklineData(filteredProductData.map(p => p.totalSales || 0))} height={30} margin={5}>
                   <SparklinesLine color="#667eea" style={{ fill: "none", strokeWidth: 3 }} />
                 </Sparklines>
                 <div className="kpi-change-row">
@@ -764,8 +947,8 @@ function VisualizationPage() {
               </div>
               <div className="kpi-card">
                 <h3>📈 Total Profit</h3>
-                <p>₹{totalProfit.toLocaleString('en-IN')}</p>
-                <Sparklines data={safeSparklineData(productData.map(p => p.profit || 0))} height={30} margin={5}>
+                <p>₹{filteredProductData.reduce((acc, p) => acc + (p.profit || 0), 0).toLocaleString('en-IN')}</p>
+                <Sparklines data={safeSparklineData(filteredProductData.map(p => p.profit || 0))} height={30} margin={5}>
                   <SparklinesLine color="#f093fb" style={{ fill: "none", strokeWidth: 3 }} />
                 </Sparklines>
                 <div className="kpi-change-row">
@@ -775,8 +958,8 @@ function VisualizationPage() {
               </div>
               <div className="kpi-card">
                 <h3>📦 Total Units Sold</h3>
-                <p>{totalUnits.toLocaleString('en-IN')}</p>
-                <Sparklines data={safeSparklineData(productData.map(p => p.quantity || 0))} height={30} margin={5}>
+                <p>{filteredProductData.reduce((acc, p) => acc + (p.quantity || 0), 0).toLocaleString('en-IN')}</p>
+                <Sparklines data={safeSparklineData(filteredProductData.map(p => p.quantity || 0))} height={30} margin={5}>
                   <SparklinesLine color="#4facfe" style={{ fill: "none", strokeWidth: 3 }} />
                 </Sparklines>
                 <div className="kpi-change-row">
@@ -795,14 +978,14 @@ function VisualizationPage() {
               <div className="kpi-card">
                 <h3>🛒 Most Purchased Category</h3>
                 <p>{mostPurchasedCategory || 'N/A'}</p>
-                <Sparklines data={safeSparklineData(productData.filter(p => p.category === mostPurchasedCategory).map(p => p.quantity || 0))} height={30} margin={5}>
+                <Sparklines data={safeSparklineData(filteredProductData.filter(p => p.category === mostPurchasedCategory).map(p => p.quantity || 0))} height={30} margin={5}>
                   <SparklinesLine color="#43e97b" style={{ fill: "none", strokeWidth: 3 }} />
                 </Sparklines>
               </div>
               <div className="kpi-card">
                 <h3>🌍 Top Purchasing Country</h3>
                 <p>{mostPurchasedCountry || 'N/A'}</p>
-                <Sparklines data={safeSparklineData(productData.filter(p => p.location === mostPurchasedCountry).map(p => p.quantity || 0))} height={30} margin={5}>
+                <Sparklines data={safeSparklineData(filteredProductData.filter(p => p.location === mostPurchasedCountry).map(p => p.quantity || 0))} height={30} margin={5}>
                   <SparklinesLine color="#fa709a" style={{ fill: "none", strokeWidth: 3 }} />
                 </Sparklines>
               </div>
@@ -812,7 +995,7 @@ function VisualizationPage() {
                 <Sparklines data={safeSparklineData((() => {
                   // Build array of sales by hour (0-23)
                   const hourSalesArr = Array(24).fill(0);
-                  productData.forEach(item => {
+                  filteredProductData.forEach(item => {
                     if (item.time) {
                       let hour = null;
                       if (typeof item.time === 'string') {
@@ -841,86 +1024,162 @@ function VisualizationPage() {
 
           {/* Chart Sections */}
           <div className="chart-sections">
-            {/* Advanced Insights / KPIs */}
+            {/* Prediction & Trends */}
             {activeSection === 'kpis' && (
               <div className="chart-section">
-                <h3>📊 Advanced Insights & KPIs</h3>
+                <h3>📊 Prediction & Trends</h3>
                 <div className="chart-grid">
-                  {/* Profitability Ratio per Category */}
+                  {/* Sales Forecasting: Next 3 months (linear regression) */}
                   <div className="chart chart-with-insight" style={{ position: 'relative' }}>
                     <AIButton
                       onClick={() => handleInsightButton(
-                        'Profitability Ratio per Category',
-                        'Radar',
-                        prepareChartDataForAPI({
-                          labels: dataBy('category', 'totalSales').keys,
-                          values: dataBy('category', 'totalSales').keys.map(category => {
-                            const categorySales = dataBy('category', 'totalSales').values[dataBy('category', 'totalSales').keys.indexOf(category)];
-                            const categoryProfit = dataBy('category', 'profit').values[dataBy('category', 'profit').keys.indexOf(category)];
-                            return categorySales ? ((categoryProfit / categorySales) * 100) : 0;
-                          })
-                        })
+                        'Sales Forecast (3 months)',
+                        'Line',
+                        (() => {
+                          const monthly = groupByMonth(filteredProductData, 'totalSales');
+                          const { nextLabels, forecasts } = forecastNextMonths(monthly.labels, monthly.values, 3);
+                          return prepareChartDataForAPI({
+                            labels: [...monthly.labels, ...nextLabels],
+                            values: [...monthly.values, ...forecasts]
+                          });
+                        })()
                       )}
-                      isLoading={insightLoading && activeInsight === 'Profitability Ratio per Category'}
-                      isActive={activeInsight === 'Profitability Ratio per Category'}
+                      isLoading={insightLoading && activeInsight === 'Sales Forecast (3 months)'}
+                      isActive={activeInsight === 'Sales Forecast (3 months)'}
                     />
-                    <h4>🎯 Profitability Ratio per Category</h4>
-                    <Radar data={{
-                      labels: dataBy('category', 'totalSales').keys,
-                      datasets: [{
-                        label: 'Profitability Ratio (%)',
-                        data: safeChartData(dataBy('category', 'totalSales').keys.map(category => {
-                          const categorySales = dataBy('category', 'totalSales').values[dataBy('category', 'totalSales').keys.indexOf(category)];
-                          const categoryProfit = dataBy('category', 'profit').values[dataBy('category', 'profit').keys.indexOf(category)];
-                          return categorySales ? ((categoryProfit / categorySales) * 100) : 0;
-                        })),
-                        backgroundColor: 'rgba(102, 126, 234, 0.2)',
-                        borderColor: 'rgba(102, 126, 234, 1)',
-                        borderWidth: 2,
-                        pointBackgroundColor: 'rgba(102, 126, 234, 1)',
-                        pointBorderColor: '#fff',
-                        pointHoverBackgroundColor: '#fff',
-                        pointHoverBorderColor: 'rgba(102, 126, 234, 1)'
-                      }]
-                    }} options={{
-                      ...chartOptions,
-                      plugins: {
-                        ...chartOptions.plugins,
-                        tooltip: {
-                          ...chartOptions.plugins.tooltip,
-                          callbacks: {
-                            ...chartOptions.plugins.tooltip.callbacks,
-                            label: function(context) {
-                              const value = context.parsed.r || 0;
-                              return `${context.dataset.label}: ${value.toLocaleString('en-IN', { maximumFractionDigits: 2 })}%`;
-                            }
-                          }
-                        }
-                      },
-                      scales: {
-                        r: {
-                          angleLines: {
-                            color: 'rgba(0, 0, 0, 0.1)'
-                          },
-                          grid: {
-                            color: 'rgba(0, 0, 0, 0.1)'
-                          },
-                          pointLabels: {
-                            font: {
-                              size: 11
-                            }
-                          }
-                        }
-                      }
-                    }} />
-                    {activeInsight === 'Profitability Ratio per Category' && (
+                    <h4>🔮 Sales Forecast (Next 3 Months)</h4>
+                    {(() => {
+                      const monthly = groupByMonth(filteredProductData, 'totalSales');
+                      const { nextLabels, forecasts } = forecastNextMonths(monthly.labels, monthly.values, 3);
+                      return (
+                        <Line
+                          data={{
+                            labels: [...monthly.labels, ...nextLabels],
+                            datasets: [
+                              {
+                                label: 'Historical Revenue ₹',
+                                data: safeChartData(monthly.values),
+                                borderColor: 'rgba(102, 126, 234, 1)',
+                                backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                                fill: true,
+                                tension: 0.3,
+                                borderWidth: 3
+                              },
+                              {
+                                label: 'Forecast ₹',
+                                data: safeChartData([...new Array(monthly.values.length - 1).fill(null), monthly.values[monthly.values.length - 1], ...forecasts]),
+                                borderColor: 'rgba(67, 233, 123, 1)',
+                                backgroundColor: 'rgba(67, 233, 123, 0.1)',
+                                borderDash: [8, 6],
+                                tension: 0.3,
+                                borderWidth: 3
+                              }
+                            ]
+                          }}
+                          options={chartOptions}
+                        />
+                      );
+                    })()}
+                    {activeInsight === 'Sales Forecast (3 months)' && (
                       <InsightTooltip
-                        chartTitle="Profitability Ratio per Category"
+                        chartTitle="Sales Forecast (3 months)"
                         isVisible={true}
-                        isLoading={insightLoading && activeInsight === 'Profitability Ratio per Category'}
-                        insight={chartInsights['Profitability Ratio per Category']}
+                        isLoading={insightLoading && activeInsight === 'Sales Forecast (3 months)'}
+                        insight={chartInsights['Sales Forecast (3 months)']}
                       />
                     )}
+                  </div>
+
+                  {/* Product/Service Trends: Rising and Declining */}
+                  <div className="chart chart-with-insight" style={{ position: 'relative' }}>
+                    <AIButton
+                      onClick={() => handleInsightButton(
+                        'Top Rising & Declining Products',
+                        'Bar',
+                        (() => {
+                          const { rising, declining } = computeProductTrends('quantity');
+                          return prepareChartDataForAPI({
+                            labels: [...rising.map(r => r.name), ...declining.map(d => d.name)],
+                            values: [...rising.map(r => r.slope), ...declining.map(d => d.slope)]
+                          });
+                        })()
+                      )}
+                      isLoading={insightLoading && activeInsight === 'Top Rising & Declining Products'}
+                      isActive={activeInsight === 'Top Rising & Declining Products'}
+                    />
+                    <h4>📊 Product Trends: Rising vs Declining</h4>
+                    {(() => {
+                      const { rising, declining } = computeProductTrends('quantity');
+                      return (
+                        <Bar
+                          data={{
+                            labels: [...rising.map(r => `⬆️ ${r.name}`), ...declining.map(d => `⬇️ ${d.name}`)],
+                            datasets: [
+                              {
+                                label: 'Trend Slope (Quantity over Time Index)',
+                                data: safeChartData([...rising.map(r => r.slope), ...declining.map(d => d.slope)]),
+                                backgroundColor: [...rising.map(() => 'rgba(67, 233, 123, 0.8)'), ...declining.map(() => 'rgba(245, 87, 108, 0.8)')],
+                                borderColor: [...rising.map(() => 'rgba(67, 233, 123, 1)'), ...declining.map(() => 'rgba(245, 87, 108, 1)')],
+                                borderWidth: 2,
+                                borderRadius: 8,
+                                borderSkipped: false
+                              }
+                            ]
+                          }}
+                          options={chartOptions}
+                        />
+                      );
+                    })()}
+                    {activeInsight === 'Top Rising & Declining Products' && (
+                      <InsightTooltip
+                        chartTitle="Top Rising & Declining Products"
+                        isVisible={true}
+                        isLoading={insightLoading && activeInsight === 'Top Rising & Declining Products'}
+                        insight={chartInsights['Top Rising & Declining Products']}
+                      />
+                    )}
+                  </div>
+
+                  {/* Category x Month Heatmap */}
+                  <div className="chart" style={{ position: 'relative' }}>
+                    <h4>🔥 Category × Month Heatmap (Revenue)</h4>
+                    {(() => {
+                      const { categories, months, matrix } = computeCategoryMonthMatrix('totalSales');
+                      const allValues = matrix.flat();
+                      const maxVal = Math.max(...allValues, 1);
+                      function colorFor(value) {
+                        const pct = Math.max(0, Math.min(1, value / maxVal));
+                        if (pct <= 0.20) return '#FFF3BF'; // very light (pale yellow)
+                        if (pct <= 0.40) return '#FFD591'; // light (soft orange)
+                        if (pct <= 0.60) return '#FFA940'; // medium (moderate orange)
+                        if (pct <= 0.80) return '#FA8C16'; // darker (strong orange)
+                        return '#D4380D'; // very dark / deep red
+                      }
+                      return (
+                        <div>
+                          <div style={{ display: 'grid', gridTemplateColumns: `120px repeat(${months.length}, minmax(64px, 1fr))`, gap: 4 }}>
+                            <div style={{ fontWeight: 600 }}></div>
+                            {months.map(m => (
+                              <div key={m} style={{ textAlign: 'center', fontWeight: 600, fontSize: 12, lineHeight: '1', height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{m}</div>
+                            ))}
+                            {categories.map((cat, r) => (
+                              <React.Fragment key={cat}>
+                                <div style={{ position: 'sticky', left: 0, background: '#fff', fontWeight: 600, padding: '4px 6px', borderRadius: 4, fontSize: 12, whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>{cat}</div>
+                                {months.map((m, c) => {
+                                  const val = matrix[r][c] || 0;
+                                  return (
+                                    <div key={`${cat}-${m}`} title={`${cat} — ${m}: ₹${val.toLocaleString('en-IN')}`}
+                                         style={{ height: 22, borderRadius: 4, background: colorFor(val), display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(0,0,0,0.75)', fontSize: 10 }}>
+                                      {val ? `₹${(val/1000).toFixed(0)}k` : ''}
+                                    </div>
+                                  );
+                                })}
+                              </React.Fragment>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </div>
                   {/* Category-wise Average Profit Margin (%) */}
                   {/* Category-wise Product Sold */}
@@ -991,74 +1250,7 @@ function VisualizationPage() {
                       />
                     )}
                   </div>
-                  {/* Category-wise Average Selling Price */}
-                  <div className="chart chart-with-insight" style={{ position: 'relative' }}>
-                    <AIButton
-                      onClick={() => handleInsightButton(
-                        'Category-wise Average Selling Price',
-                        'Radar',
-                        prepareChartDataForAPI({
-                          labels: averageBy('category', 'price').keys,
-                          values: averageBy('category', 'price').values
-                        })
-                      )}
-                      isLoading={insightLoading && activeInsight === 'Category-wise Average Selling Price'}
-                      isActive={activeInsight === 'Category-wise Average Selling Price'}
-                    />
-                    <h4>💰 Category-wise Average Selling Price</h4>
-                    <Radar data={{
-                      labels: averageBy('category', 'price').keys,
-                      datasets: [{
-                        label: 'Avg Selling Price',
-                        data: safeChartData(averageBy('category', 'price').values),
-                        backgroundColor: 'rgba(79, 172, 254, 0.2)',
-                        borderColor: 'rgba(79, 172, 254, 1)',
-                        borderWidth: 2,
-                        pointBackgroundColor: 'rgba(79, 172, 254, 1)',
-                        pointBorderColor: '#fff',
-                        pointHoverBackgroundColor: '#fff',
-                        pointHoverBorderColor: 'rgba(79, 172, 254, 1)'
-                      }]
-                    }} options={{
-                      ...chartOptions,
-                      plugins: {
-                        ...chartOptions.plugins,
-                        tooltip: {
-                          ...chartOptions.plugins.tooltip,
-                          callbacks: {
-                            ...chartOptions.plugins.tooltip.callbacks,
-                            label: function(context) {
-                              const value = context.parsed.r || 0;
-                              return `${context.dataset.label}: ${value.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
-                            }
-                          }
-                        }
-                      },
-                      scales: {
-                        r: {
-                          angleLines: {
-                            color: 'rgba(0, 0, 0, 0.1)'
-                          },
-                          grid: {
-                            color: 'rgba(0, 0, 0, 0.1)'
-                          },
-                          pointLabels: {
-                            font: {
-                              size: 11
-                            }
-                          }
-                        }
-                      }
-                    }} />
-                    {activeInsight === 'Category-wise Average Selling Price' && (
-                      <InsightTooltip
-                        chartTitle="Category-wise Average Selling Price"
-                        isVisible={true}
-                        isLoading={insightLoading && activeInsight === 'Category-wise Average Selling Price'}
-                        insight={chartInsights['Category-wise Average Selling Price']}
-                      />
-                    )}
-                  </div>
+                  {/* Removed: Category-wise Average Selling Price (replaced by heatmap) */}
                 </div>
               </div>
             )}
@@ -1075,8 +1267,8 @@ function VisualizationPage() {
                         'Total Revenue Over Time',
                         'Line',
                         prepareChartDataForAPI({
-                          labels: productData.map(p => p.time ? new Date(p.time).toLocaleString(undefined, { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : 'Unknown'),
-                          values: productData.map(p => p.totalSales)
+                          labels: filteredProductData.map(p => p.time ? new Date(p.time).toLocaleString(undefined, { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : 'Unknown'),
+                          values: filteredProductData.map(p => p.totalSales)
                         })
                       )}
                       isLoading={insightLoading && activeInsight === 'Total Revenue Over Time'}
@@ -1084,10 +1276,10 @@ function VisualizationPage() {
                     />
                     <h4>📈 Total Revenue Over Time</h4>
                     <Line data={{
-                      labels: productData.map(p => p.time ? new Date(p.time).toLocaleString(undefined, { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : 'Unknown'),
+                      labels: filteredProductData.map(p => p.time ? new Date(p.time).toLocaleString(undefined, { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : 'Unknown'),
                       datasets: [{
                         label: 'Revenue ₹',
-                        data: safeChartData(productData.map(p => p.totalSales)),
+                        data: safeChartData(filteredProductData.map(p => p.totalSales)),
                         borderColor: 'rgba(102, 126, 234, 1)',
                         backgroundColor: 'rgba(102, 126, 234, 0.1)',
                         tension: 0.4,
@@ -1312,8 +1504,8 @@ function VisualizationPage() {
                         'Profit Margin per Product',
                         'Bar',
                         prepareChartDataForAPI({
-                          labels: productData.map(p => p.productName || 'Unknown'),
-                          values: productData.map(p => p.price ? ((p.profit / p.price) * 100) : 0)
+                          labels: filteredProductData.map(p => p.productName || 'Unknown'),
+                          values: filteredProductData.map(p => p.price ? ((p.profit / p.price) * 100) : 0)
                         })
                       )}
                       isLoading={insightLoading && activeInsight === 'Profit Margin per Product'}
@@ -1321,10 +1513,10 @@ function VisualizationPage() {
                     />
                     <h4>📊 Profit Margin per Product</h4>
                     <Bar data={{
-                      labels: productData.map(p => p.productName || 'Unknown'),
+                      labels: filteredProductData.map(p => p.productName || 'Unknown'),
                       datasets: [{
                         label: 'Profit Margin %',
-                        data: safeChartData(productData.map(p => p.price ? ((p.profit / p.price) * 100) : 0)),
+                        data: safeChartData(filteredProductData.map(p => p.price ? ((p.profit / p.price) * 100) : 0)),
                         backgroundColor: 'rgba(250, 112, 154, 0.8)',
                         borderColor: 'rgba(250, 112, 154, 1)',
                         borderWidth: 2,
@@ -1366,8 +1558,8 @@ function VisualizationPage() {
                         'Total Profit Over Time',
                         'Line',
                         prepareChartDataForAPI({
-                          labels: productData.map(p => p.time ? new Date(p.time).toLocaleString(undefined, { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : 'Unknown'),
-                          values: productData.map(p => p.profit)
+                          labels: filteredProductData.map(p => p.time ? new Date(p.time).toLocaleString(undefined, { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : 'Unknown'),
+                          values: filteredProductData.map(p => p.profit)
                         })
                       )}
                       isLoading={insightLoading && activeInsight === 'Total Profit Over Time'}
@@ -1375,10 +1567,10 @@ function VisualizationPage() {
                     />
                     <h4>📈 Total Profit Over Time</h4>
                     <Line data={{
-                      labels: productData.map(p => p.time ? new Date(p.time).toLocaleString(undefined, { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : 'Unknown'),
+                      labels: filteredProductData.map(p => p.time ? new Date(p.time).toLocaleString(undefined, { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : 'Unknown'),
                       datasets: [{
                         label: 'Profit ₹',
-                        data: safeChartData(productData.map(p => p.profit)),
+                        data: safeChartData(filteredProductData.map(p => p.profit)),
                         borderColor: 'rgba(250, 112, 154, 1)',
                         backgroundColor: 'rgba(250, 112, 154, 0.1)',
                         tension: 0.4,
@@ -1528,46 +1720,94 @@ function VisualizationPage() {
                       onClick={() => handleInsightButton(
                         'Quantity Sold per Product',
                         'Bar',
-                        prepareChartDataForAPI({
-                          labels: dataBy('productName', 'quantity').keys,
-                          values: dataBy('productName', 'quantity').values
-                        })
+                        (() => {
+                          const selected = quantityCategoryFilter;
+                          const filtered = (filteredProductData || []).filter(p => selected === 'all' || p.category === selected);
+                          const byProduct = {};
+                          filtered.forEach(p => {
+                            const key = p.productName || 'Unknown';
+                            byProduct[key] = (byProduct[key] || 0) + (p.quantity || 0);
+                          });
+                          const labels = Object.keys(byProduct);
+                          const values = labels.map(l => byProduct[l]);
+                          return prepareChartDataForAPI({ labels, values });
+                        })()
                       )}
                       isLoading={insightLoading && activeInsight === 'Quantity Sold per Product'}
                       isActive={activeInsight === 'Quantity Sold per Product'}
                     />
-                    <h4>📊 Quantity Sold per Product</h4>
-                    <Bar data={{
-                      labels: dataBy('productName', 'quantity').keys,
-                      datasets: [{
-                        label: 'Quantity',
-                        data: safeChartData(dataBy('productName', 'quantity').values),
-                        backgroundColor: 'rgba(79, 172, 254, 0.8)',
-                        borderColor: 'rgba(79, 172, 254, 1)',
-                        borderWidth: 2,
-                        borderRadius: 8,
-                        borderSkipped: false
-                      }]
-                    }} options={{ 
-                      ...chartOptions, 
-                      indexAxis: 'y',
-                      plugins: {
-                        ...chartOptions.plugins,
-                        legend: {
-                          display: false
-                        },
-                        tooltip: {
-                          ...chartOptions.plugins.tooltip,
-                          callbacks: {
-                            ...chartOptions.plugins.tooltip.callbacks,
-                            label: function(context) {
-                              const value = context.parsed.x || context.parsed.y || 0;
-                              return `Quantity: ${value.toLocaleString('en-IN')}`;
+                    <div style={{ display: 'flex', alignItems: 'center', marginBottom: 8, justifyContent: 'space-between' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <h4 style={{ margin: 0, marginRight: 12, fontWeight: 600, fontSize: '1.08rem', display: 'flex', alignItems: 'center', gap: 6 }}>📊 Quantity Sold per Product</h4>
+                        <select
+                          value={quantityCategoryFilter}
+                          onChange={e => setQuantityCategoryFilter(e.target.value)}
+                          style={{
+                            padding: '0.3rem 0.7rem',
+                            borderRadius: 6,
+                            fontSize: '1rem',
+                            fontWeight: 500,
+                            background: '#fff',
+                            border: '1.2px solid #e2e8f0',
+                            color: '#333',
+                            outline: 'none',
+                            marginLeft: 'auto',
+                            minWidth: 100,
+                            alignSelf: 'center',
+                            marginTop: '-2px'
+                          }}
+                        >
+                          <option value="all">All</option>
+                          {Array.from(new Set((filteredProductData || []).map(p => p.category).filter(Boolean))).map(cat => (
+                            <option key={cat} value={cat}>{cat}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                    {(() => {
+                      const selected = quantityCategoryFilter;
+                      const filtered = (filteredProductData || []).filter(p => selected === 'all' || p.category === selected);
+                      const byProduct = {};
+                      filtered.forEach(p => {
+                        const key = p.productName || 'Unknown';
+                        byProduct[key] = (byProduct[key] || 0) + (p.quantity || 0);
+                      });
+                      const labels = Object.keys(byProduct);
+                      const values = labels.map(l => byProduct[l]);
+                      return (
+                        <Bar data={{
+                          labels,
+                          datasets: [{
+                            label: 'Quantity',
+                            data: safeChartData(values),
+                            backgroundColor: 'rgba(79, 172, 254, 0.8)',
+                            borderColor: 'rgba(79, 172, 254, 1)',
+                            borderWidth: 2,
+                            borderRadius: 8,
+                            borderSkipped: false
+                          }]
+                        }} options={{ 
+                          ...chartOptions, 
+                          indexAxis: 'y',
+                          plugins: {
+                            ...chartOptions.plugins,
+                            legend: {
+                              display: false
+                            },
+                            tooltip: {
+                              ...chartOptions.plugins.tooltip,
+                              callbacks: {
+                                ...chartOptions.plugins.tooltip.callbacks,
+                                label: function(context) {
+                                  const value = context.parsed.x || context.parsed.y || 0;
+                                  return `Quantity: ${value.toLocaleString('en-IN')}`;
+                                }
+                              }
                             }
                           }
-                        }
-                      }
-                    }} />
+                        }} />
+                      );
+                    })()}
                     {activeInsight === 'Quantity Sold per Product' && (
                       <InsightTooltip
                         chartTitle="Quantity Sold per Product"
@@ -1712,8 +1952,8 @@ function VisualizationPage() {
                         'Monthly Trend',
                         'Bar',
                         prepareChartDataForAPI({
-                          labels: groupByMonth(productData, monthlyTrendMetric === 'revenue' ? 'totalSales' : monthlyTrendMetric).labels,
-                          values: groupByMonth(productData, monthlyTrendMetric === 'revenue' ? 'totalSales' : monthlyTrendMetric).values
+                          labels: groupByMonth(filteredProductData, monthlyTrendMetric === 'revenue' ? 'totalSales' : monthlyTrendMetric).labels,
+                          values: groupByMonth(filteredProductData, monthlyTrendMetric === 'revenue' ? 'totalSales' : monthlyTrendMetric).values
                         })
                       )}
                       isLoading={insightLoading && activeInsight === 'Monthly Trend'}
@@ -1732,13 +1972,13 @@ function VisualizationPage() {
                       </select>
                     </div>
                     <Bar data={{
-                      labels: groupByMonth(productData, monthlyTrendMetric === 'revenue' ? 'totalSales' : monthlyTrendMetric).labels,
+                      labels: groupByMonth(filteredProductData, monthlyTrendMetric === 'revenue' ? 'totalSales' : monthlyTrendMetric).labels,
                       datasets: [{
                         label:
                           monthlyTrendMetric === 'revenue' ? 'Revenue ₹' :
                           monthlyTrendMetric === 'quantity' ? 'Product Sold' :
                           'Profit ₹',
-                        data: groupByMonth(productData, monthlyTrendMetric === 'revenue' ? 'totalSales' : monthlyTrendMetric).values,
+                        data: groupByMonth(filteredProductData, monthlyTrendMetric === 'revenue' ? 'totalSales' : monthlyTrendMetric).values,
                         backgroundColor:
                           monthlyTrendMetric === 'revenue' ? 'rgba(102, 126, 234, 0.8)' :
                           monthlyTrendMetric === 'quantity' ? 'rgba(67, 233, 123, 0.8)' :
@@ -1766,10 +2006,10 @@ function VisualizationPage() {
                   {/* <div className="chart">
                     <h4>📈 Daily Sales Trend</h4>
                     <Line data={{
-                      labels: productData.map(p => p.time ? new Date(p.time).toLocaleString(undefined, { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : 'Unknown'),
+                      labels: filteredProductData.map(p => p.time ? new Date(p.time).toLocaleString(undefined, { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : 'Unknown'),
                       datasets: [{
                         label: 'Sales ₹',
-                        data: safeChartData(productData.map(p => p.totalSales)),
+                        data: safeChartData(filteredProductData.map(p => p.totalSales)),
                         borderColor: 'rgba(102, 126, 234, 1)',
                         backgroundColor: 'rgba(102, 126, 234, 0.1)',
                         tension: 0.4,
@@ -1787,7 +2027,7 @@ function VisualizationPage() {
                   {/* <div className="chart">
                     <h4>🎯 Time vs Category Sales</h4>
                     <Line data={{
-                      labels: productData.map(p => p.time ? new Date(p.time).toLocaleString(undefined, { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : 'Unknown'),
+                      labels: filteredProductData.map(p => p.time ? new Date(p.time).toLocaleString(undefined, { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : 'Unknown'),
                       datasets: dataBy('category', 'totalSales').keys.map((category, index) => ({
                         label: category,
                         data: safeChartData(productData.filter(p => p.category === category).map(p => p.totalSales)),
@@ -2175,7 +2415,7 @@ function VisualizationPage() {
                     <div style={{ marginBottom: "10px", fontSize: "12px", color: "#666", padding: "8px", backgroundColor: "#f8f9fa", borderRadius: "4px" }}>
                       <p><strong>Map Status:</strong> {geoData ? '✅ Loaded' : '⏳ Loading...'}</p>
                       <p><strong>Products:</strong> {productData.length} items</p>
-                      <p><strong>Countries:</strong> {[...new Set(productData.map(p => p.location))].join(', ')}</p>
+                      <p><strong>Countries:</strong> {[...new Set(filteredProductData.map(p => p.location))].join(', ')}</p>
                     </div>
                     */}
                     {geoData && (
