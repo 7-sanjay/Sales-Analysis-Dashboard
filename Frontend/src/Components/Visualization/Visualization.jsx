@@ -256,8 +256,14 @@ function VisualizationPage() {
         setChartInsights(prev => ({ ...prev, [chartTitle]: 'No valid chart data for insight.' }));
         return;
       }
-      const insight = await generateChartInsight(chartData);
-      setChartInsights(prev => ({ ...prev, [chartTitle]: insight || 'Could not generate insight.' }));
+      const insight = await generateChartInsight({ chartTitle, chartType, chartData });
+      if (insight && insight.trim()) {
+        setChartInsights(prev => ({ ...prev, [chartTitle]: insight }));
+      } else {
+        // Request backend deterministic summary when model returns empty
+        const fallback = await generateChartInsight({ chartTitle, chartType, chartData });
+        setChartInsights(prev => ({ ...prev, [chartTitle]: fallback || '' }));
+      }
     } catch (error) {
       setChartInsights(prev => ({ ...prev, [chartTitle]: 'Could not generate insight.' }));
     } finally {
@@ -608,7 +614,7 @@ function VisualizationPage() {
               <span>Generating insight...</span>
             </div>
           ) : (
-            <p className="insight-text">{insight}</p>
+            <p className="insight-text">{insight || ''}</p>
           )}
         </div>
       </div>
@@ -627,7 +633,13 @@ function VisualizationPage() {
       const insight = await generateChartInsight(chartData);
       setChartInsights(prev => ({ ...prev, [chartTitle]: insight || 'Could not generate insight.' }));
     } catch (e) {
-      setChartInsights(prev => ({ ...prev, [chartTitle]: 'Could not generate insight.' }));
+      // On error, try one more time to let backend generate a deterministic summary
+      try {
+        const fallback = await generateChartInsight({ chartTitle, chartType, chartData });
+        setChartInsights(prev => ({ ...prev, [chartTitle]: fallback || '' }));
+      } catch (_) {
+        setChartInsights(prev => ({ ...prev, [chartTitle]: '' }));
+      }
     } finally {
       setInsightLoading(false);
     }

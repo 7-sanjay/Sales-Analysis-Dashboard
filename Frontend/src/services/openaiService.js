@@ -14,7 +14,7 @@ export const fetchAnalyticsData = async () => {
   }
 };
 
-export const generateChartInsight = async (chartData) => {
+export const generateChartInsight = async ({ chartTitle, chartType, chartData }) => {
   try {
     // Send chartData to backend Gemini endpoint
     const response = await fetch(`${BASE_URL}/api/generate-insight`, {
@@ -22,13 +22,13 @@ export const generateChartInsight = async (chartData) => {
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ chartData }),
+      body: JSON.stringify({ chartTitle, chartType, chartData }),
     });
     if (!response.ok) {
       throw new Error(`Gemini API error: ${response.status}`);
     }
     const result = await response.json();
-    return result.insight || null;
+    return (result && typeof result.insight === 'string') ? result.insight : null;
   } catch (error) {
     console.error('Error generating chart insight:', error);
     return null;

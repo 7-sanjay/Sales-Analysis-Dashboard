@@ -490,19 +490,49 @@ async function maybeSendInventoryAlerts(inventoryDoc) {
 // API endpoint to generate insights
 app.post("/api/generate-insight", async (req, res) => {
   try {
-    const { chartData } = req.body; // Get data from frontend
+    const { chartTitle, chartType, chartData } = req.body;
 
-    // Craft a specific prompt for the AI
-    const prompt = `You are a data analyst. Based on the following time-series data for sales and quantity, generate a concise insight in about 50 words. Data: ${JSON.stringify(chartData)}`;
+    // Validate chart data
+    const labels = Array.isArray(chartData?.labels) ? chartData.labels : [];
+    const values = Array.isArray(chartData?.values) ? chartData.values : [];
+    const hasData = labels.length > 0 && values.length > 0;
 
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    const insightText = response.text();
+    // Build a richer, chart-aware prompt
+    const basePrompt = `You are a concise data analyst. Write a 2-3 sentence insight (<= 70 words) about the chart titled "${chartTitle}" of type ${chartType}. Mention peaks, lows, trend direction, and any outliers. Use Indian Rupee formatting where relevant.`;
+    const dataSnippet = `\nLabels: ${JSON.stringify(labels)}\nValues: ${JSON.stringify(values)}\nSummary: ${JSON.stringify(chartData?.summary || {})}`;
+    const prompt = basePrompt + (hasData ? dataSnippet : "\nNo data available.");
+
+    let insightText = "";
+    try {
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      insightText = (response && typeof response.text === 'function') ? response.text() : '';
+    } catch (llmError) {
+      console.error('Gemini generation error:', llmError);
+    }
+
+    // Deterministic fallback summary if model fails or returns empty
+    if (!insightText || !insightText.trim()) {
+      if (hasData) {
+        const maxVal = Math.max(...values);
+        const minVal = Math.min(...values);
+        const total = values.reduce((a, b) => a + (Number(b) || 0), 0);
+        const avg = values.length ? total / values.length : 0;
+        const maxIdx = values.indexOf(maxVal);
+        const minIdx = values.indexOf(minVal);
+        const maxLabel = labels[maxIdx];
+        const minLabel = labels[minIdx];
+        insightText = `This chart shows ${labels.length} points. Peak at "${maxLabel}" (₹${maxVal.toLocaleString('en-IN')}) and low at "${minLabel}" (₹${minVal.toLocaleString('en-IN')}). The average is ₹${avg.toFixed(2)} with total of ₹${total.toLocaleString('en-IN')}.`;
+      } else {
+        insightText = "No data available to analyze for this chart.";
+      }
+    }
 
     res.json({ insight: insightText });
   } catch (error) {
     console.error("Error generating insight:", error);
-    res.status(500).json({ error: "Failed to generate insight." });
+    // Return deterministic fallback even on unhandled error
+    res.status(200).json({ insight: "No data available to analyze for this chart." });
   }
 });
 
