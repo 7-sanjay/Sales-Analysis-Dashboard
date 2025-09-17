@@ -630,8 +630,13 @@ function VisualizationPage() {
     if (chartInsights[chartTitle]) return;
     setInsightLoading(true);
     try {
-      const insight = await generateChartInsight(chartData);
-      setChartInsights(prev => ({ ...prev, [chartTitle]: insight || 'Could not generate insight.' }));
+      const insight = await generateChartInsight({ chartTitle, chartType, chartData });
+      if (insight && insight.trim()) {
+        setChartInsights(prev => ({ ...prev, [chartTitle]: insight }));
+      } else {
+        const fallback = await generateChartInsight({ chartTitle, chartType, chartData });
+        setChartInsights(prev => ({ ...prev, [chartTitle]: fallback || '' }));
+      }
     } catch (e) {
       // On error, try one more time to let backend generate a deterministic summary
       try {
