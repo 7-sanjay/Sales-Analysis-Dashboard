@@ -676,6 +676,27 @@ function VisualizationPage() {
     return { labels: sortedMonths, values: sortedMonths.map(m => monthly[m]) };
   }
 
+  // Build daily totals and return last N points for sparkline compactness
+  function buildDailySeries(data, valueKey) {
+    const daily = {};
+    (data || []).forEach(item => {
+      if (!item.time) return;
+      const d = new Date(item.time);
+      if (isNaN(d)) return;
+      const key = d.toISOString().slice(0, 10); // YYYY-MM-DD
+      daily[key] = (daily[key] || 0) + (item[valueKey] || 0);
+    });
+    const keys = Object.keys(daily).sort();
+    return keys.map(k => daily[k]);
+  }
+
+  function getSparklineData(valueKey, days = 30, subset = null) {
+    const data = subset || filteredProductData;
+    const series = buildDailySeries(data, valueKey);
+    if (series.length <= days) return safeSparklineData(series);
+    return safeSparklineData(series.slice(series.length - days));
+  }
+
   // Build Category x Month matrix for a heatmap (using totalSales by default)
   function computeCategoryMonthMatrix(valueKey = 'totalSales') {
     const categoriesSet = new Set();
@@ -954,7 +975,7 @@ function VisualizationPage() {
               <div className="kpi-card">
                 <h3>💰 Total Revenue</h3>
                 <p>₹{filteredProductData.reduce((acc, p) => acc + (p.totalSales || 0), 0).toLocaleString('en-IN')}</p>
-                <Sparklines data={safeSparklineData(filteredProductData.map(p => p.totalSales || 0))} height={30} margin={5}>
+                <Sparklines data={getSparklineData('totalSales', 30)} height={30} margin={5}>
                   <SparklinesLine color="#667eea" style={{ fill: "none", strokeWidth: 3 }} />
                 </Sparklines>
                 <div className="kpi-change-row">
@@ -965,7 +986,7 @@ function VisualizationPage() {
               <div className="kpi-card">
                 <h3>📈 Total Profit</h3>
                 <p>₹{filteredProductData.reduce((acc, p) => acc + (p.profit || 0), 0).toLocaleString('en-IN')}</p>
-                <Sparklines data={safeSparklineData(filteredProductData.map(p => p.profit || 0))} height={30} margin={5}>
+                <Sparklines data={getSparklineData('profit', 30)} height={30} margin={5}>
                   <SparklinesLine color="#f093fb" style={{ fill: "none", strokeWidth: 3 }} />
                 </Sparklines>
                 <div className="kpi-change-row">
@@ -976,7 +997,7 @@ function VisualizationPage() {
               <div className="kpi-card">
                 <h3>📦 Total Units Sold</h3>
                 <p>{filteredProductData.reduce((acc, p) => acc + (p.quantity || 0), 0).toLocaleString('en-IN')}</p>
-                <Sparklines data={safeSparklineData(filteredProductData.map(p => p.quantity || 0))} height={30} margin={5}>
+                <Sparklines data={getSparklineData('quantity', 30)} height={30} margin={5}>
                   <SparklinesLine color="#4facfe" style={{ fill: "none", strokeWidth: 3 }} />
                 </Sparklines>
                 <div className="kpi-change-row">
@@ -995,44 +1016,36 @@ function VisualizationPage() {
               <div className="kpi-card">
                 <h3>🛒 Most Purchased Category</h3>
                 <p>{mostPurchasedCategory || 'N/A'}</p>
-                <Sparklines data={safeSparklineData(filteredProductData.filter(p => p.category === mostPurchasedCategory).map(p => p.quantity || 0))} height={30} margin={5}>
+                <Sparklines data={getSparklineData('quantity', 30, filteredProductData.filter(p => p.category === mostPurchasedCategory))} height={30} margin={5}>
                   <SparklinesLine color="#43e97b" style={{ fill: "none", strokeWidth: 3 }} />
                 </Sparklines>
               </div>
               <div className="kpi-card">
                 <h3>🌍 Top Purchasing Country</h3>
                 <p>{mostPurchasedCountry || 'N/A'}</p>
-                <Sparklines data={safeSparklineData(filteredProductData.filter(p => p.location === mostPurchasedCountry).map(p => p.quantity || 0))} height={30} margin={5}>
+                <Sparklines data={getSparklineData('quantity', 30, filteredProductData.filter(p => p.location === mostPurchasedCountry))} height={30} margin={5}>
                   <SparklinesLine color="#fa709a" style={{ fill: "none", strokeWidth: 3 }} />
                 </Sparklines>
               </div>
               <div className="kpi-card">
                 <h3>⏰ Peak Sales Hours</h3>
                 <p>{peakSalesHour}</p>
-                <Sparklines data={safeSparklineData((() => {
-                  // Build array of sales by hour (0-23)
+                <Sparklines data={(() => {
                   const hourSalesArr = Array(24).fill(0);
-                  filteredProductData.forEach(item => {
-                    if (item.time) {
-                      let hour = null;
-                      if (typeof item.time === 'string') {
-                        const date = new Date(item.time);
-                        if (!isNaN(date)) {
-                          hour = date.getHours();
-                        } else {
-                          const match = item.time.match(/(\d{1,2}):/);
-                          if (match) hour = parseInt(match[1], 10);
-                        }
-                      } else if (item.time instanceof Date) {
-                        hour = item.time.getHours();
-                      }
-                      if (hour !== null && !isNaN(hour)) {
-                        hourSalesArr[hour] += (item.totalSales || 0);
-                      }
-                    }
+                  const recent = filteredProductData.filter(p => {
+                    if (!p.time) return false;
+                    const d = new Date(p.time);
+                    const cutoff = new Date();
+                    cutoff.setDate(cutoff.getDate() - 30);
+                    return d >= cutoff;
                   });
-                  return hourSalesArr;
-                })())} height={30} margin={5}>
+                  recent.forEach(item => {
+                    const d = new Date(item.time);
+                    const hour = d.getHours();
+                    hourSalesArr[hour] += (item.totalSales || 0);
+                  });
+                  return safeSparklineData(hourSalesArr);
+                })()} height={30} margin={5}>
                   <SparklinesLine color="#a8edea" style={{ fill: "none", strokeWidth: 3 }} />
                 </Sparklines>
               </div>
