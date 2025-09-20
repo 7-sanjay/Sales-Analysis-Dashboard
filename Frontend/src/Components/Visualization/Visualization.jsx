@@ -1190,7 +1190,19 @@ function VisualizationPage() {
                   </div>
 
                   {/* Category x Month Heatmap */}
-                  <div className="chart" style={{ position: 'relative' }}>
+                  <div className="chart chart-with-insight" style={{ position: 'relative' }}>
+                    <AIButton
+                      onClick={() => handleInsightButton(
+                        'Category × Month Heatmap (Revenue)',
+                        'Heatmap',
+                        prepareChartDataForAPI({
+                          labels: computeCategoryMonthMatrix('totalSales').categories,
+                          values: computeCategoryMonthMatrix('totalSales').matrix.flat()
+                        })
+                      )}
+                      isLoading={insightLoading && activeInsight === 'Category × Month Heatmap (Revenue)'}
+                      isActive={activeInsight === 'Category × Month Heatmap (Revenue)'}
+                    />
                     <h4>🔥 Category × Month Heatmap (Revenue)</h4>
                     {(() => {
                       const { categories, months, matrix } = computeCategoryMonthMatrix('totalSales');
@@ -1229,6 +1241,14 @@ function VisualizationPage() {
                         </div>
                       );
                     })()}
+                    {activeInsight === 'Category × Month Heatmap (Revenue)' && (
+                      <InsightTooltip
+                        chartTitle="Category × Month Heatmap (Revenue)"
+                        isVisible={true}
+                        isLoading={insightLoading && activeInsight === 'Category × Month Heatmap (Revenue)'}
+                        insight={chartInsights['Category × Month Heatmap (Revenue)']}
+                      />
+                    )}
                   </div>
                   {/* Category-wise Average Profit Margin (%) */}
                   {/* Category-wise Product Sold */}
@@ -2666,7 +2686,19 @@ function VisualizationPage() {
                     )}
                   </div>
 
-                  <div className="chart">
+                  <div className="chart chart-with-insight" style={{ position: 'relative' }}>
+                    <AIButton
+                      onClick={() => handleInsightButton(
+                        'Sales by Location',
+                        'Bar',
+                        prepareChartDataForAPI({
+                          labels: dataBy('location', 'totalSales').keys,
+                          values: dataBy('location', 'totalSales').values
+                        })
+                      )}
+                      isLoading={insightLoading && activeInsight === 'Sales by Location'}
+                      isActive={activeInsight === 'Sales by Location'}
+                    />
                     <h4>🌍 Sales by Location (Geographical Distribution)</h4>
                     <Bar data={{
                       labels: dataBy('location', 'totalSales').keys,
@@ -2714,9 +2746,29 @@ function VisualizationPage() {
                         }
                       }
                     }} />
+                    {activeInsight === 'Sales by Location' && (
+                      <InsightTooltip
+                        chartTitle="Sales by Location"
+                        isVisible={true}
+                        isLoading={insightLoading && activeInsight === 'Sales by Location'}
+                        insight={chartInsights['Sales by Location']}
+                      />
+                    )}
                   </div>
 
-                  <div className="chart">
+                  <div className="chart chart-with-insight" style={{ position: 'relative' }}>
+                    <AIButton
+                      onClick={() => handleInsightButton(
+                        'Profit by Location',
+                        'Bar',
+                        prepareChartDataForAPI({
+                          labels: dataBy('location', 'profit').keys,
+                          values: dataBy('location', 'profit').values
+                        })
+                      )}
+                      isLoading={insightLoading && activeInsight === 'Profit by Location'}
+                      isActive={activeInsight === 'Profit by Location'}
+                    />
                     <h4>💰 Profit by Location</h4>
                     <Bar data={{
                       labels: dataBy('location', 'profit').keys,
@@ -2764,9 +2816,32 @@ function VisualizationPage() {
                         }
                       }
                     }} />
+                    {activeInsight === 'Profit by Location' && (
+                      <InsightTooltip
+                        chartTitle="Profit by Location"
+                        isVisible={true}
+                        isLoading={insightLoading && activeInsight === 'Profit by Location'}
+                        insight={chartInsights['Profit by Location']}
+                      />
+                    )}
                   </div>
 
-                  <div className="chart">
+                  <div className="chart chart-with-insight" style={{ position: 'relative' }}>
+                    <AIButton
+                      onClick={() => handleInsightButton(
+                        'Location Performance Comparison',
+                        'Bar',
+                        prepareChartDataForAPI({
+                          labels: dataBy('location', 'totalSales').keys,
+                          values: [
+                            dataBy('location', 'totalSales').values,
+                            dataBy('location', 'profit').values
+                          ]
+                        })
+                      )}
+                      isLoading={insightLoading && activeInsight === 'Location Performance Comparison'}
+                      isActive={activeInsight === 'Location Performance Comparison'}
+                    />
                     <h4>📊 Location Performance Comparison</h4>
                     <Bar data={{
                       labels: dataBy('location', 'totalSales').keys,
@@ -2821,9 +2896,29 @@ function VisualizationPage() {
                         }
                       }
                     }} />
+                    {activeInsight === 'Location Performance Comparison' && (
+                      <InsightTooltip
+                        chartTitle="Location Performance Comparison"
+                        isVisible={true}
+                        isLoading={insightLoading && activeInsight === 'Location Performance Comparison'}
+                        insight={chartInsights['Location Performance Comparison']}
+                      />
+                    )}
                   </div>
 
-                  <div className="chart">
+                  <div className="chart chart-with-insight" style={{ position: 'relative' }}>
+                    <AIButton
+                      onClick={() => handleInsightButton(
+                        'Sales Distribution by Location',
+                        'Pie',
+                        prepareChartDataForAPI({
+                          labels: dataBy('location', 'totalSales').keys,
+                          values: dataBy('location', 'totalSales').values
+                        })
+                      )}
+                      isLoading={insightLoading && activeInsight === 'Sales Distribution by Location'}
+                      isActive={activeInsight === 'Sales Distribution by Location'}
+                    />
                     <h4>🥧 Sales Distribution by Location</h4>
                     <Pie data={{
                       labels: dataBy('location', 'totalSales').keys,
@@ -2857,6 +2952,14 @@ function VisualizationPage() {
                         }
                       }
                     }} />
+                    {activeInsight === 'Sales Distribution by Location' && (
+                      <InsightTooltip
+                        chartTitle="Sales Distribution by Location"
+                        isVisible={true}
+                        isLoading={insightLoading && activeInsight === 'Sales Distribution by Location'}
+                        insight={chartInsights['Sales Distribution by Location']}
+                      />
+                    )}
                   </div>
                 </div>
               </div>
