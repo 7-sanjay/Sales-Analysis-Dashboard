@@ -106,6 +106,7 @@ function VisualizationPage() {
   const [quantityCategoryFilter, setQuantityCategoryFilter] = useState('all');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
+  const [profitMarginCategoryFilter, setProfitMarginCategoryFilter] = useState('all');
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -506,9 +507,9 @@ function VisualizationPage() {
   const mostPurchasedCountryData = dataBy('location', 'quantity');
   const mostPurchasedCountry = mostPurchasedCountryData.keys[mostPurchasedCountryData.values.indexOf(Math.max(...mostPurchasedCountryData.values))];
 
-  // Top 5 products by sales
+  // Top 5 products by quantity sold
   const topProducts = [...filteredProductData]
-    .sort((a, b) => b.totalSales - a.totalSales)
+    .sort((a, b) => b.quantity - a.quantity)
     .slice(0, 5);
 
   // Peak Sales Hour (by total sales)
@@ -695,6 +696,24 @@ function VisualizationPage() {
     const series = buildDailySeries(data, valueKey);
     if (series.length <= days) return safeSparklineData(series);
     return safeSparklineData(series.slice(series.length - days));
+  }
+
+  // Helper to get last N days of data for time-based charts
+  function getLastNDaysData(data, valueKey, days = 10) {
+    const daily = {};
+    (data || []).forEach(item => {
+      if (!item.time) return;
+      const d = new Date(item.time);
+      if (isNaN(d)) return;
+      const key = d.toISOString().slice(0, 10); // YYYY-MM-DD
+      daily[key] = (daily[key] || 0) + (item[valueKey] || 0);
+    });
+    const sortedDates = Object.keys(daily).sort((a, b) => new Date(a) - new Date(b));
+    const lastNDates = sortedDates.slice(-days);
+    return {
+      labels: lastNDates,
+      values: lastNDates.map(date => daily[date])
+    };
   }
 
   // Build Category x Month matrix for a heatmap (using totalSales by default)
@@ -1305,11 +1324,14 @@ function VisualizationPage() {
                       isActive={activeInsight === 'Total Revenue Over Time'}
                     />
                     <h4>📈 Total Revenue Over Time</h4>
-                    <Line data={{
-                      labels: filteredProductData.map(p => p.time ? new Date(p.time).toLocaleString(undefined, { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : 'Unknown'),
-                      datasets: [{
-                        label: 'Revenue ₹',
-                        data: safeChartData(filteredProductData.map(p => p.totalSales)),
+                    {(() => {
+                      const { labels, values } = getLastNDaysData(filteredProductData, 'totalSales', 15);
+                      return (
+                        <Line data={{
+                          labels: labels.map(date => new Date(date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })),
+                          datasets: [{
+                            label: 'Revenue ₹',
+                            data: safeChartData(values),
                         borderColor: 'rgba(102, 126, 234, 1)',
                         backgroundColor: 'rgba(102, 126, 234, 0.1)',
                         tension: 0.4,
@@ -1322,6 +1344,8 @@ function VisualizationPage() {
                         pointHoverRadius: 8
                       }]
                     }} options={chartOptions} />
+                      );
+                    })()}
                     {activeInsight === 'Total Revenue Over Time' && (
                       <InsightTooltip
                         chartTitle="Total Revenue Over Time"
@@ -1533,20 +1557,94 @@ function VisualizationPage() {
                       onClick={() => handleInsightButton(
                         'Profit Margin per Product',
                         'Bar',
-                        prepareChartDataForAPI({
-                          labels: filteredProductData.map(p => p.productName || 'Unknown'),
-                          values: filteredProductData.map(p => p.price ? ((p.profit / p.price) * 100) : 0)
-                        })
+                        (() => {
+                          const filtered = profitMarginCategoryFilter === 'all' ? filteredProductData : filteredProductData.filter(p => p.category === profitMarginCategoryFilter);
+                          
+                          // Group by unique product names and calculate aggregated profit margin
+                          const productMap = {};
+                          filtered.forEach(p => {
+                            const productName = p.productName || 'Unknown';
+                            if (!productMap[productName]) {
+                              productMap[productName] = {
+                                totalProfit: 0,
+                                totalPrice: 0,
+                                count: 0
+                              };
+                            }
+                            productMap[productName].totalProfit += p.profit || 0;
+                            productMap[productName].totalPrice += p.price || 0;
+                            productMap[productName].count += 1;
+                          });
+                          
+                          const uniqueProducts = Object.keys(productMap);
+                          const profitMargins = uniqueProducts.map(productName => {
+                            const product = productMap[productName];
+                            return product.totalPrice > 0 ? ((product.totalProfit / product.totalPrice) * 100) : 0;
+                          });
+                          
+                          return prepareChartDataForAPI({
+                            labels: uniqueProducts,
+                            values: profitMargins
+                          });
+                        })()
                       )}
                       isLoading={insightLoading && activeInsight === 'Profit Margin per Product'}
                       isActive={activeInsight === 'Profit Margin per Product'}
                     />
-                    <h4>📊 Profit Margin per Product</h4>
-                    <Bar data={{
-                      labels: filteredProductData.map(p => p.productName || 'Unknown'),
-                      datasets: [{
-                        label: 'Profit Margin %',
-                        data: safeChartData(filteredProductData.map(p => p.price ? ((p.profit / p.price) * 100) : 0)),
+                    <div style={{ display: 'flex', alignItems: 'center', marginBottom: 8, gap: '12px' }}>
+                      <h4 style={{ margin: 0 }}>📊 Profit Margin per Product</h4>
+                      <select
+                        value={profitMarginCategoryFilter}
+                        onChange={e => setProfitMarginCategoryFilter(e.target.value)}
+                        style={{
+                          padding: '0.3rem 0.7rem',
+                          borderRadius: 6,
+                          fontSize: '1rem',
+                          fontWeight: 500,
+                          background: '#fff',
+                            border: '1.2px solid #e2e8f0',
+                            color: '#333',
+                            outline: 'none',
+                            minWidth: 100
+                          }}
+                        >
+                          <option value="all">All</option>
+                          {Array.from(new Set((filteredProductData || []).map(p => p.category).filter(Boolean))).map(cat => (
+                            <option key={cat} value={cat}>{cat}</option>
+                          ))}
+                        </select>
+                    </div>
+                    {(() => {
+                      const filtered = profitMarginCategoryFilter === 'all' ? filteredProductData : filteredProductData.filter(p => p.category === profitMarginCategoryFilter);
+                      
+                      // Group by unique product names and calculate aggregated profit margin
+                      const productMap = {};
+                      filtered.forEach(p => {
+                        const productName = p.productName || 'Unknown';
+                        if (!productMap[productName]) {
+                          productMap[productName] = {
+                            totalProfit: 0,
+                            totalPrice: 0,
+                            count: 0
+                          };
+                        }
+                        productMap[productName].totalProfit += p.profit || 0;
+                        productMap[productName].totalPrice += p.price || 0;
+                        productMap[productName].count += 1;
+                      });
+                      
+                      const uniqueProducts = Object.keys(productMap);
+                      const profitMargins = uniqueProducts.map(productName => {
+                        const product = productMap[productName];
+                        return product.totalPrice > 0 ? ((product.totalProfit / product.totalPrice) * 100) : 0;
+                      });
+                      
+                      return (
+                        <Bar data={{
+                          labels: uniqueProducts,
+                          datasets: [{
+                            label: 'Profit Margin %',
+                            data: safeChartData(profitMargins),
                         backgroundColor: 'rgba(250, 112, 154, 0.8)',
                         borderColor: 'rgba(250, 112, 154, 1)',
                         borderWidth: 2,
@@ -1572,6 +1670,8 @@ function VisualizationPage() {
                         }
                       }
                     }} />
+                      );
+                    })()}
                     {activeInsight === 'Profit Margin per Product' && (
                       <InsightTooltip
                         chartTitle="Profit Margin per Product"
@@ -1596,11 +1696,14 @@ function VisualizationPage() {
                       isActive={activeInsight === 'Total Profit Over Time'}
                     />
                     <h4>📈 Total Profit Over Time</h4>
-                    <Line data={{
-                      labels: filteredProductData.map(p => p.time ? new Date(p.time).toLocaleString(undefined, { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : 'Unknown'),
-                      datasets: [{
-                        label: 'Profit ₹',
-                        data: safeChartData(filteredProductData.map(p => p.profit)),
+                    {(() => {
+                      const { labels, values } = getLastNDaysData(filteredProductData, 'profit', 10);
+                      return (
+                        <Line data={{
+                          labels: labels.map(date => new Date(date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })),
+                          datasets: [{
+                            label: 'Profit ₹',
+                            data: safeChartData(values),
                         borderColor: 'rgba(250, 112, 154, 1)',
                         backgroundColor: 'rgba(250, 112, 154, 0.1)',
                         tension: 0.4,
@@ -1613,6 +1716,8 @@ function VisualizationPage() {
                         pointHoverRadius: 8
                       }]
                     }} options={chartOptions} />
+                      );
+                    })()}
                     {activeInsight === 'Total Profit Over Time' && (
                       <InsightTooltip
                         chartTitle="Total Profit Over Time"
@@ -1857,7 +1962,7 @@ function VisualizationPage() {
                             'Bar',
                             prepareChartDataForAPI({
                               labels: top5View === 'products' ? topProducts.map(p => p.productName || 'Unknown') : topCategories.map(c => c.category),
-                              values: top5View === 'products' ? topProducts.map(p => p.totalSales) : topCategories.map(c => c.totalSales)
+                              values: top5View === 'products' ? topProducts.map(p => p.quantity) : topCategories.map(c => c.totalSales)
                             })
                           )}
                           isLoading={insightLoading && activeInsight === (top5View === 'products' ? 'Top 5 Best-Selling Products' : 'Top 5 Best-Selling Categories')}
@@ -1889,11 +1994,11 @@ function VisualizationPage() {
                         </select>
                       </div>
                     </div>
-                    <Bar data={{
-                      labels: top5View === 'products' ? topProducts.map(p => p.productName || 'Unknown') : topCategories.map(c => c.category),
-                      datasets: [{
-                        label: top5View === 'products' ? 'Sales ₹' : 'Category Sales ₹',
-                        data: top5View === 'products' ? topProducts.map(p => p.totalSales) : topCategories.map(c => c.totalSales),
+                        <Bar data={{
+                          labels: top5View === 'products' ? topProducts.map(p => p.productName || 'Unknown') : topCategories.map(c => c.category),
+                          datasets: [{
+                            label: top5View === 'products' ? 'Quantity Sold' : 'Category Sales ₹',
+                            data: top5View === 'products' ? topProducts.map(p => p.quantity) : topCategories.map(c => c.totalSales),
                         backgroundColor: modernColorPalette.slice(0, 5),
                         borderColor: modernColorPalette.slice(0, 5).map(color => color.replace('0.8', '1')),
                         borderWidth: 2,
@@ -2100,32 +2205,14 @@ function VisualizationPage() {
                       isActive={activeInsight === 'Quantity Sold by Date'}
                     />
                     <h4>📦 Quantity Sold by Date</h4>
-                    <Bar data={{
-                      labels: (() => {
-                        const quantityByDate = {};
-                        productData.forEach(item => {
-                          if (item.time) {
-                            const date = new Date(item.time);
-                            const dateKey = date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
-                            quantityByDate[dateKey] = (quantityByDate[dateKey] || 0) + (item.quantity || 0);
-                          }
-                        });
-                        return Object.keys(quantityByDate).sort((a, b) => new Date(a) - new Date(b));
-                      })(),
-                      datasets: [{
-                        label: 'Total Quantity',
-                        data: (() => {
-                          const quantityByDate = {};
-                          productData.forEach(item => {
-                            if (item.time) {
-                              const date = new Date(item.time);
-                              const dateKey = date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
-                              quantityByDate[dateKey] = (quantityByDate[dateKey] || 0) + (item.quantity || 0);
-                            }
-                          });
-                          const sortedDates = Object.keys(quantityByDate).sort((a, b) => new Date(a) - new Date(b));
-                          return safeChartData(sortedDates.map(date => quantityByDate[date]));
-                        })(),
+                    {(() => {
+                      const { labels, values } = getLastNDaysData(filteredProductData, 'quantity', 10);
+                      return (
+                        <Bar data={{
+                          labels: labels.map(date => new Date(date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })),
+                          datasets: [{
+                            label: 'Total Quantity',
+                            data: safeChartData(values),
                         backgroundColor: 'rgba(67, 233, 123, 0.8)',
                         borderColor: 'rgba(67, 233, 123, 1)',
                         borderWidth: 2,
@@ -2151,6 +2238,8 @@ function VisualizationPage() {
                         }
                       }
                     }} />
+                      );
+                    })()}
                     {activeInsight === 'Quantity Sold by Date' && (
                       <InsightTooltip
                         chartTitle="Quantity Sold by Date"
@@ -2190,32 +2279,14 @@ function VisualizationPage() {
                       isActive={activeInsight === 'Sales Trend by Date'}
                     />
                     <h4>📈 Sales Trend by Date</h4>
-                    <Line data={{
-                      labels: (() => {
-                        const salesByDate = {};
-                        productData.forEach(item => {
-                          if (item.time) {
-                            const date = new Date(item.time);
-                            const dateKey = date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
-                            salesByDate[dateKey] = (salesByDate[dateKey] || 0) + (item.totalSales || 0);
-                          }
-                        });
-                        return Object.keys(salesByDate).sort((a, b) => new Date(a) - new Date(b));
-                      })(),
-                      datasets: [{
-                        label: 'Total Sales ₹',
-                        data: (() => {
-                          const salesByDate = {};
-                          productData.forEach(item => {
-                            if (item.time) {
-                              const date = new Date(item.time);
-                              const dateKey = date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
-                              salesByDate[dateKey] = (salesByDate[dateKey] || 0) + (item.totalSales || 0);
-                            }
-                          });
-                          const sortedDates = Object.keys(salesByDate).sort((a, b) => new Date(a) - new Date(b));
-                          return safeChartData(sortedDates.map(date => salesByDate[date]));
-                        })(),
+                    {(() => {
+                      const { labels, values } = getLastNDaysData(filteredProductData, 'totalSales', 10);
+                      return (
+                        <Line data={{
+                          labels: labels.map(date => new Date(date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })),
+                          datasets: [{
+                            label: 'Total Sales ₹',
+                            data: safeChartData(values),
                         borderColor: 'rgba(250, 112, 154, 1)',
                         backgroundColor: 'rgba(250, 112, 154, 0.1)',
                         tension: 0.4,
@@ -2246,6 +2317,8 @@ function VisualizationPage() {
                         }
                       }
                     }} />
+                      );
+                    })()}
                     {activeInsight === 'Sales Trend by Date' && (
                       <InsightTooltip
                         chartTitle="Sales Trend by Date"
@@ -2290,33 +2363,16 @@ function VisualizationPage() {
                       isActive={activeInsight === 'Sales vs Quantity by Date'}
                     />
                     <h4>📊 Sales vs Quantity by Date</h4>
-                    <Line data={{
-                      labels: (() => {
-                        const salesByDate = {};
-                        productData.forEach(item => {
-                          if (item.time) {
-                            const date = new Date(item.time);
-                            const dateKey = date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
-                            salesByDate[dateKey] = (salesByDate[dateKey] || 0) + (item.totalSales || 0);
-                          }
-                        });
-                        return Object.keys(salesByDate).sort((a, b) => new Date(a) - new Date(b));
-                      })(),
+                    {(() => {
+                      const salesData = getLastNDaysData(filteredProductData, 'totalSales', 10);
+                      const quantityData = getLastNDaysData(filteredProductData, 'quantity', 10);
+                      return (
+                        <Line data={{
+                          labels: salesData.labels.map(date => new Date(date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })),
                       datasets: [
                         {
                           label: 'Total Sales ₹',
-                          data: (() => {
-                            const salesByDate = {};
-                            productData.forEach(item => {
-                              if (item.time) {
-                                const date = new Date(item.time);
-                                const dateKey = date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
-                                salesByDate[dateKey] = (salesByDate[dateKey] || 0) + (item.totalSales || 0);
-                              }
-                            });
-                            const sortedDates = Object.keys(salesByDate).sort((a, b) => new Date(a) - new Date(b));
-                            return safeChartData(sortedDates.map(date => salesByDate[date]));
-                          })(),
+                          data: safeChartData(salesData.values),
                           borderColor: 'rgba(79, 172, 254, 1)',
                           backgroundColor: 'rgba(79, 172, 254, 0.1)',
                           tension: 0.4,
@@ -2331,18 +2387,7 @@ function VisualizationPage() {
                         },
                         {
                           label: 'Total Quantity',
-                          data: (() => {
-                            const quantityByDate = {};
-                            productData.forEach(item => {
-                              if (item.time) {
-                                const date = new Date(item.time);
-                                const dateKey = date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
-                                quantityByDate[dateKey] = (quantityByDate[dateKey] || 0) + (item.quantity || 0);
-                              }
-                            });
-                            const sortedDates = Object.keys(quantityByDate).sort((a, b) => new Date(a) - new Date(b));
-                            return safeChartData(sortedDates.map(date => quantityByDate[date]));
-                          })(),
+                          data: safeChartData(quantityData.values),
                           borderColor: 'rgba(67, 233, 123, 1)',
                           backgroundColor: 'rgba(67, 233, 123, 0.1)',
                           tension: 0.4,
@@ -2400,6 +2445,8 @@ function VisualizationPage() {
                         }
                       }
                     }} />
+                      );
+                    })()}
                     {activeInsight === 'Sales vs Quantity by Date' && (
                       <InsightTooltip
                         chartTitle="Sales vs Quantity by Date"
