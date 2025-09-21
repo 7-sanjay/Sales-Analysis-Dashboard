@@ -1,11 +1,12 @@
 # 📊 Sales Analysis Dashboard
 
-A comprehensive full-stack MERN (MongoDB, Express, React, Node.js) application for tracking and analyzing sales data with beautiful data visualization using **Chart.js** and AI-powered insights from **Gemini**.
+A comprehensive full-stack MERN (MongoDB, Express, React, Node.js) application for tracking and analyzing sales data with beautiful data visualization using **Chart.js**, **ApexCharts**, and **Recharts**, plus AI-powered insights from **Google Gemini AI** and **Firebase Authentication**.
 
 ![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)
 ![Express.js](https://img.shields.io/badge/Express.js-000000?style=for-the-badge&logo=express&logoColor=white)
 ![Node.js](https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=node.js&logoColor=white)
 ![MongoDB](https://img.shields.io/badge/MongoDB-47A248?style=for-the-badge&logo=mongodb&logoColor=white)
+![Firebase](https://img.shields.io/badge/Firebase-FFCA28?style=for-the-badge&logo=firebase&logoColor=black)
 ![Chart.js](https://img.shields.io/badge/Chart.js-FF6384?style=for-the-badge&logo=chartdotjs&logoColor=white)
 ![Gemini AI](https://img.shields.io/badge/Gemini%20AI-4285F4?style=for-the-badge&logo=google&logoColor=white)
 
@@ -13,35 +14,46 @@ A comprehensive full-stack MERN (MongoDB, Express, React, Node.js) application f
 
 ## 🚀 Features
 
+### 🔐 **Authentication & Security**
+- **Firebase Authentication**: Secure user login and password reset functionality
+- **Protected Routes**: Route-based access control for authenticated users
+- **Password Reset**: Email-based password recovery system
+- **Session Management**: Secure user session handling
+
 ### 📊 **Data Management**
 - **Product Management**: Add, edit, and track product sales data with comprehensive form validation
 - **CSV Import**: Bulk import products from CSV files with drag-and-drop functionality
-- **Inventory Management**: Real-time inventory tracking with stock level monitoring
-- **Data Visualization**: Interactive charts and graphs for sales analysis
+- **Inventory Management**: Real-time inventory tracking with stock level monitoring and email alerts
+- **Data Visualization**: Interactive charts and graphs for sales analysis using multiple chart libraries
 
 ### 🎯 **User Interface**
 - **Responsive Design**: Works seamlessly on desktop, tablet, and mobile devices
 - **Modern UI**: Clean, intuitive interface with gradient designs and smooth animations
 - **Side-by-Side Layout**: Form and CSV upload on the same page for efficient workflow
 - **Table View**: Comprehensive data table with sorting, filtering, and bulk operations
+- **Multiple Chart Libraries**: Chart.js, ApexCharts, and Recharts for diverse visualization needs
 
 ### 🔧 **Advanced Functionality**
 - **Row Selection**: Select individual or multiple rows for bulk operations
 - **Bulk Delete**: Delete selected rows with confirmation dialogs
 - **Real-time Updates**: Instant data synchronization across all views
 - **Error Handling**: Comprehensive error handling with user-friendly messages
+- **Email Notifications**: Automated low stock and out-of-stock alerts
 
 ### 📈 **Analytics & Insights**
-- **Interactive Charts**: Dynamic visualizations using Chart.js
+- **Interactive Charts**: Dynamic visualizations using Chart.js, ApexCharts, and Recharts
 - **AI-Powered Insights**: Smart business insights using Google Gemini AI
+- **Comprehensive Analytics**: Detailed analytics endpoint with category, location, and time analysis
 - **Sales Analytics**: Track sales, profit, and inventory trends
 - **Export Functionality**: Download data as CSV files
+- **Statistical Analysis**: Price ranges, profit margins, and performance metrics
 
 ### 🛡️ **Security & Performance**
 - **Cloud Database**: Secure data storage with MongoDB Atlas
 - **RESTful API**: Well-structured backend API with Express.js
 - **Input Validation**: Comprehensive form validation and data sanitization
 - **Optimized Performance**: Efficient data handling and rendering
+- **Email Service**: SMTP-based email notifications for inventory alerts
 
 ---
 
@@ -49,44 +61,55 @@ A comprehensive full-stack MERN (MongoDB, Express, React, Node.js) application f
 
 ```mermaid
 flowchart TD
-  A[User Interface] -->|Data Entry| B[React Frontend]
-  B -->|API Calls| C[Express.js Backend]
-  C -->|Data Storage| D[MongoDB Atlas]
-  B -->|Visualization| E[Chart.js]
-  B -->|AI Insights| F[Gemini AI]
-  F -->|Smart Analysis| B
+  A[User Interface] -->|Authentication| B[Firebase Auth]
+  A -->|Data Entry| C[React Frontend]
+  C -->|API Calls| D[Express.js Backend]
+  D -->|Data Storage| E[MongoDB Atlas]
+  C -->|Visualization| F[Chart.js/ApexCharts/Recharts]
+  C -->|AI Insights| G[Gemini AI]
+  G -->|Smart Analysis| C
+  D -->|Email Alerts| H[SMTP Service]
   
   subgraph "Frontend Features"
-    B1[Product Form]
-    B2[CSV Upload]
-    B3[Table View]
-    B4[Inventory Management]
-    B5[Data Visualization]
+    C1[Login/Auth]
+    C2[Product Form]
+    C3[CSV Upload]
+    C4[Table View]
+    C5[Inventory Management]
+    C6[Data Visualization]
+    C7[Password Reset]
   end
   
   subgraph "Backend Services"
-    C1[Product API]
-    C2[Inventory API]
-    C3[CSV Processing]
-    C4[File Upload]
+    D1[Product API]
+    D2[Inventory API]
+    D3[Analytics API]
+    D4[CSV Processing]
+    D5[Email Service]
+    D6[Gemini Integration]
   end
-  
-  B --> B1
-  B --> B2
-  B --> B3
-  B --> B4
-  B --> B5
   
   C --> C1
   C --> C2
   C --> C3
   C --> C4
+  C --> C5
+  C --> C6
+  C --> C7
   
-  style F fill:#f9f,stroke:#333,stroke-width:2px
-  style E fill:#ffb,stroke:#333,stroke-width:2px
-  style D fill:#bfb,stroke:#333,stroke-width:2px
-  style C fill:#bbf,stroke:#333,stroke-width:2px
-  style B fill:#fff,stroke:#333,stroke-width:2px
+  D --> D1
+  D --> D2
+  D --> D3
+  D --> D4
+  D --> D5
+  D --> D6
+  
+  style G fill:#f9f,stroke:#333,stroke-width:2px
+  style F fill:#ffb,stroke:#333,stroke-width:2px
+  style E fill:#bfb,stroke:#333,stroke-width:2px
+  style D fill:#bbf,stroke:#333,stroke-width:2px
+  style C fill:#fff,stroke:#333,stroke-width:2px
+  style B fill:#ffa,stroke:#333,stroke-width:2px
   style A fill:#eee,stroke:#333,stroke-width:2px
 ```
 
@@ -115,6 +138,17 @@ Create a `.env` file in the Backend directory:
 ```env
 MONGODB_URI=your_mongodb_atlas_connection_string
 PORT=5000
+GEMINI_API_KEY=your_gemini_api_key
+SMTP_HOST=your_smtp_host
+SMTP_PORT=587
+SMTP_USER=your_smtp_username
+SMTP_PASS=your_smtp_password
+SMTP_SECURE=false
+ALERT_EMAIL_FROM=your_email@domain.com
+ALERT_EMAIL_TO=admin@domain.com
+LOW_STOCK_THRESHOLD=3
+LOW_STOCK_ALERT_COOLDOWN_MS=21600000
+OUT_OF_STOCK_ALERT_COOLDOWN_MS=86400000
 ```
 
 ### 3. Frontend Setup
@@ -158,22 +192,30 @@ Sales-Analysis-Dashboard/
 │   ├── models/
 │   │   ├── Product.js          # Product data model
 │   │   └── Inventory.js        # Inventory data model
-│   ├── routes/
-│   │   ├── products.js         # Product API routes
-│   │   └── inventory.js        # Inventory API routes
+│   ├── services/
+│   │   └── emailService.js     # Email notification service
 │   ├── uploads/                # Temporary CSV file storage
-│   ├── server.js               # Main server file
+│   ├── server.js               # Main server file with all API routes
+│   ├── sample_products.csv     # Sample data for testing
 │   └── package.json
 ├── Frontend/
 │   ├── src/
 │   │   ├── Components/
-│   │   │   ├── FormPage/       # Product form and CSV upload
-│   │   │   ├── TableView/      # Data table with bulk operations
-│   │   │   ├── Inventory/      # Inventory management
-│   │   │   └── Visualization/  # Charts and analytics
-│   │   ├── App.js
+│   │   │   ├── FormPage/           # Product form and CSV upload
+│   │   │   ├── TableView/          # Data table with bulk operations
+│   │   │   ├── Inventory/          # Inventory management
+│   │   │   ├── InventoryVisualization/  # Inventory charts
+│   │   │   ├── LoginPage/          # Authentication components
+│   │   │   └── Visualization/      # Sales charts and analytics
+│   │   ├── services/
+│   │   │   └── openaiService.js   # AI service integration
+│   │   ├── firebase.js            # Firebase configuration
+│   │   ├── App.jsx                # Main app component
 │   │   └── index.js
+│   ├── build/                     # Production build
+│   ├── public/                    # Static assets
 │   └── package.json
+├── DEPLOYMENT.md                  # Deployment guide
 └── README.md
 ```
 
@@ -218,9 +260,11 @@ Sales-Analysis-Dashboard/
 ### Inventory
 - `GET /api/inventory` - Get all inventory items
 - `POST /api/inventory` - Add/update inventory item
-- `PUT /api/inventory/:id` - Update inventory item
-- `DELETE /api/inventory/:id` - Delete inventory item
 - `POST /api/inventory/reduce` - Reduce stock quantity
+
+### Analytics
+- `GET /api/analytics` - Get comprehensive analytics data
+- `POST /api/generate-insight` - Generate AI insights for charts
 
 ---
 
@@ -228,23 +272,37 @@ Sales-Analysis-Dashboard/
 
 ### Frontend (Vercel)
 1. Connect your GitHub repository to Vercel
-2. Set environment variables in Vercel dashboard
+2. Set environment variables in Vercel dashboard:
+   - `REACT_APP_API_BASE_URL=https://your-backend-url.onrender.com`
 3. Deploy automatically on push to main branch
 
 ### Backend (Render/Railway)
 1. Connect your GitHub repository
-2. Set environment variables (MONGODB_URI, PORT)
+2. Set environment variables:
+   - `MONGODB_URI` - Your MongoDB Atlas connection string
+   - `PORT` - Server port (usually 5000)
+   - `GEMINI_API_KEY` - Your Google Gemini API key
+   - `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS` - Email configuration
+   - `ALERT_EMAIL_FROM`, `ALERT_EMAIL_TO` - Email addresses for alerts
 3. Deploy and get your backend URL
 4. Update frontend environment variables with backend URL
+
+### Important Notes
+- See `DEPLOYMENT.md` for detailed deployment instructions
+- Ensure CORS is configured to allow your frontend domain
+- Test email functionality after deployment
 
 ---
 
 ## 🛡️ Security Features
 
+- **Firebase Authentication**: Secure user authentication and session management
 - **Input Validation**: All user inputs are validated and sanitized
 - **Error Handling**: Comprehensive error handling with user-friendly messages
 - **File Upload Security**: Secure CSV file processing with validation
 - **Database Security**: MongoDB Atlas with secure connection strings
+- **Email Security**: SMTP-based email notifications with configurable settings
+- **API Security**: CORS configuration and request validation
 
 ---
 
@@ -282,6 +340,9 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 🙏 Acknowledgments
 
 - [Chart.js](https://www.chartjs.org/) for beautiful data visualizations
+- [ApexCharts](https://apexcharts.com/) for advanced chart components
+- [Recharts](https://recharts.org/) for React-based charting
 - [Google Gemini AI](https://ai.google.dev/) for intelligent insights
+- [Firebase](https://firebase.google.com/) for authentication services
 - [MongoDB Atlas](https://www.mongodb.com/cloud/atlas) for cloud database
 - [React](https://reactjs.org/) and [Express.js](https://expressjs.com/) communities
